@@ -1,0 +1,621 @@
+/* ============================================================
+   PrepApp — estilos
+   Diseño oscuro, pensado para iPhone (safe areas, tap targets
+   grandes, sin highlights táctiles del navegador).
+   ============================================================ */
+
+:root {
+  --bg: #0b0e14;
+  --bg-elevated: #12151f;
+  --card: #161a25;
+  --card-border: #232838;
+  --text: #f4f6fb;
+  --text-dim: #8b93a7;
+  --text-faint: #565f75;
+
+  --accent: #ff6a3d;
+  --accent-2: #ffb23d;
+  --accent-soft: rgba(255, 106, 61, 0.14);
+
+  --warmup: #ff8a3d;
+  --training: #6a8bff;
+  --cooldown: #3dd6ff;
+
+  --danger: #ff5470;
+  --success: #33d17a;
+
+  --radius-lg: 26px;
+  --radius-md: 18px;
+  --radius-sm: 12px;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  overscroll-behavior-y: none;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+button, input, textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+button {
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+svg { display: block; flex-shrink: 0; }
+
+/* ---------- Estructura de pantalla ---------- */
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-top: calc(var(--safe-top) + 8px);
+  padding-bottom: calc(var(--safe-bottom) + 10px);
+  padding-left: calc(var(--safe-left) + 0px);
+  padding-right: calc(var(--safe-right) + 0px);
+  animation: screen-in .28s cubic-bezier(.22,.9,.32,1);
+}
+
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 8px;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.topbar-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  flex-shrink: 0;
+}
+
+.back-btn svg { width: 20px; height: 20px; stroke: var(--text); }
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  flex-shrink: 0;
+}
+.icon-btn svg { width: 18px; height: 18px; stroke: var(--text); }
+.icon-btn.danger svg { stroke: var(--danger); }
+
+.spacer { flex: 1; }
+
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 20px 24px;
+}
+
+/* ---------- HOME ---------- */
+
+.home {
+  justify-content: center;
+  align-items: center;
+  padding-left: calc(var(--safe-left) + 24px);
+  padding-right: calc(var(--safe-right) + 24px);
+}
+
+.home-content {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 56px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 42px;
+  border-radius: 30px;
+  background: linear-gradient(160deg, #1a1f2c 0%, #12151f 100%);
+  box-shadow:
+    0 22px 45px -18px rgba(0,0,0,0.65),
+    0 2px 0 0 rgba(255,255,255,0.03) inset,
+    0 -18px 40px -30px rgba(255,106,61,0.35) inset;
+  transform: translateY(-8px);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.brand-title {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #ffffff 15%, #b9c2d6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.brand-sub {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.home-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.big-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 20px 22px;
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  box-shadow: 0 10px 24px -14px rgba(0,0,0,0.6);
+}
+
+.big-btn .ico {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  flex-shrink: 0;
+}
+
+.big-btn .ico svg { width: 22px; height: 22px; }
+
+.big-btn.primary .ico { background: var(--accent-soft); }
+.big-btn.primary .ico svg { stroke: var(--accent); }
+
+.big-btn.secondary .ico { background: rgba(106, 139, 255, 0.14); }
+.big-btn.secondary .ico svg { stroke: var(--training); }
+
+.big-btn .chev { margin-left: auto; opacity: .35; }
+.big-btn .chev svg { width: 16px; height: 16px; stroke: var(--text); }
+
+/* ---------- Listas ---------- */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.routine-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.routine-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  text-align: left;
+}
+
+.routine-btn .name {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.routine-days {
+  display: flex;
+  gap: 6px;
+}
+
+.routine-days .d {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-faint);
+}
+.routine-days .d.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 60px 30px;
+  color: var(--text-dim);
+}
+.empty-state svg { width: 44px; height: 44px; stroke: var(--text-faint); }
+.empty-state p { margin: 0; font-size: 15px; line-height: 1.5; }
+
+.fab {
+  position: absolute;
+  right: calc(var(--safe-right) + 20px);
+  bottom: calc(var(--safe-bottom) + 22px);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 28px -8px rgba(255,106,61,0.55);
+}
+.fab svg { width: 24px; height: 24px; stroke: #1a0e08; stroke-width: 2.4; }
+
+/* ---------- Formulario crear/editar rutina ---------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 26px;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.field input[type="text"] {
+  width: 100%;
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  font-size: 17px;
+  font-weight: 600;
+  outline: none;
+}
+.field input[type="text"]:focus { border-color: var(--accent); }
+
+.day-picker {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.day-toggle {
+  flex: 1;
+  aspect-ratio: 1;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.day-toggle.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a0e08;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: #1a0e08;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 12px 26px -10px rgba(255,106,61,0.55);
+}
+.primary-btn:disabled { opacity: .4; box-shadow: none; }
+
+.text-btn {
+  width: 100%;
+  padding: 14px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+/* ---------- Detalle de rutina ---------- */
+
+.routine-title {
+  padding: 4px 20px 18px;
+  flex-shrink: 0;
+}
+.routine-title h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.phase-stack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 20px;
+  overflow-y: auto;
+}
+
+.phase-btn {
+  flex: 1;
+  min-height: 84px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 22px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--card-border);
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+
+.phase-btn .ico {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.08);
+}
+.phase-btn .ico svg { width: 24px; height: 24px; }
+
+.phase-btn .label { font-size: 18px; font-weight: 700; }
+.phase-btn .count { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+
+.phase-btn.warmup   { background: linear-gradient(135deg, rgba(255,138,61,0.16), var(--card) 60%); }
+.phase-btn.warmup .ico { background: rgba(255,138,61,0.18); }
+.phase-btn.warmup .ico svg { stroke: var(--warmup); }
+
+.phase-btn.training { background: linear-gradient(135deg, rgba(106,139,255,0.16), var(--card) 60%); }
+.phase-btn.training .ico { background: rgba(106,139,255,0.18); }
+.phase-btn.training .ico svg { stroke: var(--training); }
+
+.phase-btn.cooldown { background: linear-gradient(135deg, rgba(61,214,255,0.16), var(--card) 60%); }
+.phase-btn.cooldown .ico { background: rgba(61,214,255,0.18); }
+.phase-btn.cooldown .ico svg { stroke: var(--cooldown); }
+
+.phase-btn .chev { margin-left: auto; opacity: .4; }
+.phase-btn .chev svg { width: 16px; height: 16px; }
+
+/* Selector de días (toggle) al fondo de la pantalla de rutina */
+
+.day-strip {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 20px calc(6px);
+}
+
+.day-chip {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  color: var(--text-dim);
+}
+
+.day-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a0e08;
+  box-shadow: 0 6px 16px -6px rgba(255,106,61,0.6);
+}
+
+.day-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+  padding-bottom: 4px;
+  flex-shrink: 0;
+}
+
+/* ---------- Editor de fase (ejercicios) ---------- */
+
+.exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exercise-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+}
+
+.exercise-row.done { opacity: .5; }
+
+.check-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--text-faint);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.check-btn svg { width: 14px; height: 14px; stroke: var(--bg); opacity: 0; }
+.exercise-row.done .check-btn { background: var(--success); border-color: var(--success); }
+.exercise-row.done .check-btn svg { opacity: 1; }
+
+.exercise-info { flex: 1; min-width: 0; }
+.exercise-info .name {
+  font-size: 15.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.exercise-row.done .exercise-info .name { text-decoration: line-through; }
+.exercise-info .detail {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.remove-btn svg { width: 16px; height: 16px; stroke: var(--text-faint); }
+
+.add-exercise-form {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px calc(var(--safe-bottom) + 10px);
+  border-top: 1px solid var(--card-border);
+  background: var(--bg-elevated);
+}
+
+.add-exercise-form .inputs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-exercise-form input[type="text"] {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  font-size: 15px;
+  outline: none;
+}
+.add-exercise-form input[type="text"]:focus { border-color: var(--accent); }
+
+.add-exercise-form .send {
+  width: 46px;
+  border-radius: 12px;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.add-exercise-form .send svg { width: 20px; height: 20px; stroke: #1a0e08; }
+.add-exercise-form .send:disabled { opacity: .35; }
+
+/* Utilidades */
+.hidden { display: none !important; }
