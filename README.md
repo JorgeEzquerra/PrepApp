@@ -31,7 +31,15 @@ icons/                   iconos de la app (192, 512, maskable, apple-touch-icon)
    los días elegidos como *toggle*: el día activo determina qué
    contenido edita cada uno de los tres botones.
 5. **Editor de fase** — lista de ejercicios de esa fase para el día
-   activo, con alta/baja y marcado de "hecho".
+   activo. Cada ejercicio se puede reordenar arrastrándolo por su asa
+   (☰) y solo se elimina manteniendo pulsada la papelera 2 segundos
+   (pide confirmación, para evitar borrados accidentales).
+
+Además, manteniendo pulsado 1,5 s uno de los tres botones de fase en
+el detalle de la rutina se abre un menú para copiar ese calentamiento
+/ entrenamiento / enfriamiento a otro día, a todos los días de
+entrenamiento de esa rutina, o vaciarlo — así no hace falta escribir
+la misma rutina varias veces.
 
 ## Probarla en local
 
@@ -84,3 +92,4 @@ carpeta o conectar el repo es suficiente, no hace falta build command.)
 - Los tamaños de icono cubren los requisitos de iOS
   (`apple-touch-icon`) y del `manifest.webmanifest` estándar
   (192/512, incluida una versión *maskable*).
+https://JorgeEzquerra.github.io/PrepApp/

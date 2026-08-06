@@ -526,30 +526,36 @@ svg { display: block; flex-shrink: 0; }
 }
 
 .exercise-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   padding: 14px 16px;
   border-radius: var(--radius-md);
   background: var(--card);
   border: 1px solid var(--card-border);
+  touch-action: pan-y;
 }
 
-.exercise-row.done { opacity: .5; }
+.exercise-row.dragging {
+  position: relative;
+  z-index: 5;
+  background: var(--bg-elevated);
+  box-shadow: 0 16px 32px -10px rgba(0,0,0,0.65);
+}
 
-.check-btn {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: 2px solid var(--text-faint);
-  flex-shrink: 0;
+.row-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.grip-btn {
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  touch-action: none;
 }
-.check-btn svg { width: 14px; height: 14px; stroke: var(--bg); opacity: 0; }
-.exercise-row.done .check-btn { background: var(--success); border-color: var(--success); }
-.exercise-row.done .check-btn svg { opacity: 1; }
+.grip-btn svg { width: 18px; height: 18px; stroke: var(--text-faint); }
 
 .exercise-info { flex: 1; min-width: 0; }
 .exercise-info .name {
@@ -559,7 +565,6 @@ svg { display: block; flex-shrink: 0; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.exercise-row.done .exercise-info .name { text-decoration: line-through; }
 .exercise-info .detail {
   font-size: 13px;
   color: var(--text-dim);
@@ -578,6 +583,38 @@ svg { display: block; flex-shrink: 0; }
   flex-shrink: 0;
 }
 .remove-btn svg { width: 16px; height: 16px; stroke: var(--text-faint); }
+
+/* Confirmación de borrado (aparece tras mantener pulsada la papelera 2 s) */
+
+.row-confirm {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+.exercise-row.confirming .row-main { display: none; }
+.exercise-row.confirming .row-confirm { display: flex; }
+
+.confirm-text {
+  font-size: 14.5px;
+  font-weight: 600;
+  text-align: center;
+  padding-top: 2px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+}
+.confirm-actions button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14.5px;
+  font-weight: 700;
+  text-align: center;
+}
+.cancel-btn { background: rgba(255,255,255,0.07); color: var(--text); }
+.delete-btn { background: var(--danger); color: #2a0710; }
 
 .add-exercise-form {
   flex-shrink: 0;
@@ -616,6 +653,79 @@ svg { display: block; flex-shrink: 0; }
 }
 .add-exercise-form .send svg { width: 20px; height: 20px; stroke: #1a0e08; }
 .add-exercise-form .send:disabled { opacity: .35; }
+
+/* ---------- Menú de opciones de fase (pulsación larga) ---------- */
+
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 60;
+  padding: 0 12px calc(var(--safe-bottom) + 12px);
+  animation: sheet-fade .18s ease;
+}
+
+@keyframes sheet-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.sheet {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: sheet-up .22s cubic-bezier(.22,.9,.32,1);
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(18px); opacity: .3; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.sheet-title {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-faint);
+  padding: 4px 0 2px;
+}
+
+.sheet-options {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+}
+
+.sheet-opt {
+  padding: 16px;
+  font-size: 15.5px;
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 1px solid var(--card-border);
+  color: var(--text);
+}
+.sheet-opt:last-child { border-bottom: none; }
+.sheet-opt.danger { color: var(--danger); font-weight: 700; }
+
+.sheet-cancel {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  font-size: 15.5px;
+  font-weight: 700;
+  text-align: center;
+}
 
 /* Utilidades */
 .hidden { display: none !important; }

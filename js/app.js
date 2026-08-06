@@ -85,8 +85,8 @@
     snow: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M4.9 6l14.2 12M19.1 6 4.9 18M2 12h20"/></svg>`,
     trash: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>`,
     pencil: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/></svg>`,
-    check: `<svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
     clipboard: `<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1Z"/><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 12h6M9 16h4"/></svg>`,
+    grip: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>`,
   };
 
   function icon(name) {
@@ -161,6 +161,76 @@
     const t = document.createElement("template");
     t.innerHTML = html.trim();
     return t.content.firstElementChild;
+  }
+
+  // Reordenar por arrastre (Pointer Events) el hijo directo de `list` cuyo
+  // asa ".grip-btn" se pulsa. Al soltar, reordena el array `items` para que
+  // coincida con el nuevo orden visual y llama a `onCommit`.
+  function attachDragReorder(list, items, onCommit) {
+    Array.from(list.children).forEach((row) => {
+      const grip = row.querySelector(".grip-btn");
+      if (!grip) return;
+      grip.addEventListener("pointerdown", (e) => startDrag(e, row));
+    });
+
+    function startDrag(e, row) {
+      if (row.classList.contains("confirming")) return;
+      e.preventDefault();
+      const pointerId = e.pointerId;
+      row.setPointerCapture(pointerId);
+      row.classList.add("dragging");
+
+      let lastY = e.clientY;
+      let translate = 0;
+
+      function checkSwap() {
+        const rowRect = row.getBoundingClientRect();
+        const rowCenter = rowRect.top + rowRect.height / 2;
+        const beforeNaturalTop = rowRect.top - translate;
+        const siblings = Array.from(list.children).filter((r) => r !== row);
+        for (const sib of siblings) {
+          const sibRect = sib.getBoundingClientRect();
+          const sibCenter = sibRect.top + sibRect.height / 2;
+          const rowIndex = Array.prototype.indexOf.call(list.children, row);
+          const sibIndex = Array.prototype.indexOf.call(list.children, sib);
+          if (rowIndex < sibIndex && rowCenter > sibCenter) {
+            list.insertBefore(row, sib.nextSibling);
+          } else if (rowIndex > sibIndex && rowCenter < sibCenter) {
+            list.insertBefore(row, sib);
+          } else {
+            continue;
+          }
+          row.style.transform = "none";
+          const newNaturalTop = row.getBoundingClientRect().top;
+          translate += beforeNaturalTop - newNaturalTop;
+          row.style.transform = `translateY(${translate}px)`;
+          break;
+        }
+      }
+
+      function onMove(ev) {
+        const delta = ev.clientY - lastY;
+        lastY = ev.clientY;
+        translate += delta;
+        row.style.transform = `translateY(${translate}px)`;
+        checkSwap();
+      }
+
+      function onUp() {
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+        document.removeEventListener("pointercancel", onUp);
+        row.classList.remove("dragging");
+        row.style.transform = "";
+        const newOrderIds = Array.from(list.children).map((r) => r.dataset.id);
+        items.sort((a, b) => newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id));
+        onCommit();
+      }
+
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+      document.addEventListener("pointercancel", onUp);
+    }
   }
 
   function topbar({ title = "", showBack = false, onBack = null, right = "" } = {}) {
@@ -405,7 +475,39 @@
         </span>
         <span class="chev">${icon("chevronRight")}</span>
       </button>`);
-      btn.addEventListener("click", () => navigate(`#/routine/${id}/${ph.key}`));
+
+      // Toque corto: entrar al editor. Pulsación larga (1,5 s): menú de opciones.
+      let pressTimer = null;
+      let longPressFired = false;
+
+      function clearPressTimer() {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
+        }
+      }
+
+      btn.addEventListener("pointerdown", () => {
+        clearPressTimer();
+        longPressFired = false;
+        pressTimer = setTimeout(() => {
+          pressTimer = null;
+          longPressFired = true;
+          openPhaseMenu(routine, ph);
+        }, 1500);
+      });
+      ["pointerup", "pointerleave", "pointercancel"].forEach((evt) =>
+        btn.addEventListener(evt, clearPressTimer)
+      );
+      btn.addEventListener("click", (e) => {
+        if (longPressFired) {
+          e.preventDefault();
+          longPressFired = false;
+          return;
+        }
+        navigate(`#/routine/${id}/${ph.key}`);
+      });
+
       stack.appendChild(btn);
     });
     screen.appendChild(stack);
@@ -426,6 +528,78 @@
     screen.appendChild(strip);
 
     return screen;
+  }
+
+  /* ---------------- Menú de opciones de una fase (pulsación larga) ---------------- */
+
+  function openPhaseMenu(routine, phaseDef) {
+    const day = routine.activeDay;
+    const dayName = DAYS.find((d) => d.key === day).name;
+    const phaseLabelLower = phaseDef.label.toLowerCase();
+    const sourceExercises = (routine.phases[phaseDef.key] && routine.phases[phaseDef.key][day]) || [];
+    const otherDays = DAYS.filter((d) => routine.days.includes(d.key) && d.key !== day);
+
+    function cloneSource() {
+      return sourceExercises.map((ex) => ({ id: uid(), name: ex.name, detail: ex.detail }));
+    }
+
+    function applyTo(targetDay) {
+      ensureDayBucket(routine, phaseDef.key, targetDay);
+      routine.phases[phaseDef.key][targetDay] = cloneSource();
+    }
+
+    const overlay = h(`<div class="sheet-overlay">
+      <div class="sheet">
+        <div class="sheet-title">${esc(phaseDef.label)} · ${esc(dayName)}</div>
+        <div class="sheet-options">
+          <button class="sheet-opt" data-action="all">Aplicar este ${esc(phaseLabelLower)} a todos los días</button>
+          ${otherDays
+            .map(
+              (d) =>
+                `<button class="sheet-opt" data-action="day" data-day="${d.key}">Aplicar este ${esc(phaseLabelLower)} al ${esc(d.name.toLowerCase())}</button>`
+            )
+            .join("")}
+          <button class="sheet-opt danger" data-action="clear">Vaciar</button>
+        </div>
+        <button class="sheet-cancel" data-action="cancel">Cancelar</button>
+      </div>
+    </div>`);
+
+    function close() {
+      overlay.remove();
+    }
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+
+    overlay.querySelector('[data-action="all"]').addEventListener("click", () => {
+      routine.days.forEach((d) => applyTo(d));
+      persist();
+      close();
+      render();
+    });
+
+    overlay.querySelectorAll('[data-action="day"]').forEach((optBtn) => {
+      optBtn.addEventListener("click", () => {
+        applyTo(optBtn.dataset.day);
+        persist();
+        close();
+        render();
+      });
+    });
+
+    overlay.querySelector('[data-action="clear"]').addEventListener("click", () => {
+      ensureDayBucket(routine, phaseDef.key, day);
+      routine.phases[phaseDef.key][day] = [];
+      persist();
+      close();
+      render();
+    });
+
+    overlay.querySelector('[data-action="cancel"]').addEventListener("click", close);
+
+    document.body.appendChild(overlay);
   }
 
   /* ---------------- Pantalla: Editor de fase (ejercicios) ---------------- */
@@ -464,28 +638,59 @@
       }
       const list = h(`<div class="exercise-list"></div>`);
       exercises.forEach((ex) => {
-        const row = h(`<div class="exercise-row ${ex.done ? "done" : ""}" data-id="${ex.id}">
-          <button class="check-btn" aria-label="Marcar hecho">${icon("check")}</button>
-          <div class="exercise-info">
-            <div class="name">${esc(ex.name)}</div>
-            ${ex.detail ? `<div class="detail">${esc(ex.detail)}</div>` : ""}
+        const row = h(`<div class="exercise-row" data-id="${ex.id}">
+          <div class="row-main">
+            <button class="grip-btn" aria-label="Reordenar">${icon("grip")}</button>
+            <div class="exercise-info">
+              <div class="name">${esc(ex.name)}</div>
+              ${ex.detail ? `<div class="detail">${esc(ex.detail)}</div>` : ""}
+            </div>
+            <button class="remove-btn" aria-label="Eliminar">${icon("trash")}</button>
           </div>
-          <button class="remove-btn" aria-label="Eliminar">${icon("trash")}</button>
+          <div class="row-confirm">
+            <div class="confirm-text">Eliminar este ejercicio.</div>
+            <div class="confirm-actions">
+              <button class="cancel-btn">Cancelar</button>
+              <button class="delete-btn">Eliminar</button>
+            </div>
+          </div>
         </div>`);
-        row.querySelector(".check-btn").addEventListener("click", () => {
-          ex.done = !ex.done;
-          persist();
-          renderList();
+
+        // Eliminar requiere mantener pulsada la papelera 2 s (evita borrados accidentales).
+        const removeBtn = row.querySelector(".remove-btn");
+        let holdTimer = null;
+        function clearHold() {
+          if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+          }
+        }
+        removeBtn.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          clearHold();
+          holdTimer = setTimeout(() => {
+            holdTimer = null;
+            row.classList.add("confirming");
+          }, 2000);
         });
-        row.querySelector(".remove-btn").addEventListener("click", () => {
+        ["pointerup", "pointerleave", "pointercancel"].forEach((evt) =>
+          removeBtn.addEventListener(evt, clearHold)
+        );
+
+        row.querySelector(".cancel-btn").addEventListener("click", () => {
+          row.classList.remove("confirming");
+        });
+        row.querySelector(".delete-btn").addEventListener("click", () => {
           const idx = exercises.findIndex((e) => e.id === ex.id);
           if (idx >= 0) exercises.splice(idx, 1);
           persist();
           renderList();
         });
+
         list.appendChild(row);
       });
       scroll.appendChild(list);
+      attachDragReorder(list, exercises, persist);
     }
 
     renderList();
@@ -511,7 +716,7 @@
     function addExercise() {
       const name = nameInput.value.trim();
       if (!name) return;
-      exercises.push({ id: uid(), name, detail: detailInput.value.trim(), done: false });
+      exercises.push({ id: uid(), name, detail: detailInput.value.trim() });
       persist();
       nameInput.value = "";
       detailInput.value = "";
