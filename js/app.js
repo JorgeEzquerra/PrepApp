@@ -512,9 +512,6 @@
     });
     screen.appendChild(stack);
 
-    const dayName = DAYS.find((d) => d.key === routine.activeDay).name;
-    screen.appendChild(h(`<div class="day-hint">Editando ${dayName}</div>`));
-
     const strip = h(`<div class="day-strip"></div>`);
     DAYS.filter((d) => routine.days.includes(d.key)).forEach((d) => {
       const chip = h(`<button class="day-chip ${d.key === routine.activeDay ? "active" : ""}" data-day="${d.key}">${d.key}</button>`);
@@ -550,23 +547,42 @@
 
     const overlay = h(`<div class="sheet-overlay">
       <div class="sheet">
-        <div class="sheet-title">${esc(phaseDef.label)} · ${esc(dayName)}</div>
-        <div class="sheet-options">
-          <button class="sheet-opt" data-action="all">Aplicar este ${esc(phaseLabelLower)} a todos los días</button>
-          ${otherDays
-            .map(
-              (d) =>
-                `<button class="sheet-opt" data-action="day" data-day="${d.key}">Aplicar este ${esc(phaseLabelLower)} al ${esc(d.name.toLowerCase())}</button>`
-            )
-            .join("")}
-          <button class="sheet-opt danger" data-action="clear">Vaciar</button>
+        <div class="sheet-view sheet-view-options">
+          <div class="sheet-title">${esc(phaseDef.label)} · ${esc(dayName)}</div>
+          <div class="sheet-options">
+            <button class="sheet-opt" data-action="all">Aplicar este ${esc(phaseLabelLower)} a todos los días</button>
+            ${otherDays
+              .map(
+                (d) =>
+                  `<button class="sheet-opt" data-action="day" data-day="${d.key}">Aplicar este ${esc(phaseLabelLower)} al ${esc(d.name.toLowerCase())}</button>`
+              )
+              .join("")}
+            <button class="sheet-opt danger" data-action="clear">Vaciar</button>
+          </div>
+          <button class="sheet-cancel" data-action="cancel">Cancelar</button>
         </div>
-        <button class="sheet-cancel" data-action="cancel">Cancelar</button>
+        <div class="sheet-view sheet-view-confirm">
+          <div class="sheet-options">
+            <div class="sheet-confirm-text">¿Seguro que quieres ejecutar este cambio?</div>
+            <div class="sheet-confirm-actions">
+              <button class="cancel-btn" data-action="confirm-cancel">Cancelar</button>
+              <button class="run-btn" data-action="confirm-run">Ejecutar</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>`);
 
+    const sheetEl = overlay.querySelector(".sheet");
+    let pendingAction = null;
+
     function close() {
       overlay.remove();
+    }
+
+    function askConfirm(actionFn) {
+      pendingAction = actionFn;
+      sheetEl.classList.add("confirming");
     }
 
     overlay.addEventListener("click", (e) => {
@@ -574,24 +590,29 @@
     });
 
     overlay.querySelector('[data-action="all"]').addEventListener("click", () => {
-      routine.days.forEach((d) => applyTo(d));
-      persist();
-      close();
-      render();
+      askConfirm(() => routine.days.forEach((d) => applyTo(d)));
     });
 
     overlay.querySelectorAll('[data-action="day"]').forEach((optBtn) => {
       optBtn.addEventListener("click", () => {
-        applyTo(optBtn.dataset.day);
-        persist();
-        close();
-        render();
+        askConfirm(() => applyTo(optBtn.dataset.day));
       });
     });
 
     overlay.querySelector('[data-action="clear"]').addEventListener("click", () => {
-      ensureDayBucket(routine, phaseDef.key, day);
-      routine.phases[phaseDef.key][day] = [];
+      askConfirm(() => {
+        ensureDayBucket(routine, phaseDef.key, day);
+        routine.phases[phaseDef.key][day] = [];
+      });
+    });
+
+    overlay.querySelector('[data-action="confirm-cancel"]').addEventListener("click", () => {
+      pendingAction = null;
+      sheetEl.classList.remove("confirming");
+    });
+
+    overlay.querySelector('[data-action="confirm-run"]').addEventListener("click", () => {
+      if (pendingAction) pendingAction();
       persist();
       close();
       render();
@@ -641,7 +662,7 @@
         const row = h(`<div class="exercise-row" data-id="${ex.id}">
           <div class="row-main">
             <button class="grip-btn" aria-label="Reordenar">${icon("grip")}</button>
-            <div class="exercise-info">
+            <div class="exercise-info" role="button">
               <div class="name">${esc(ex.name)}</div>
               ${ex.detail ? `<div class="detail">${esc(ex.detail)}</div>` : ""}
             </div>
@@ -652,6 +673,14 @@
             <div class="confirm-actions">
               <button class="cancel-btn">Cancelar</button>
               <button class="delete-btn">Eliminar</button>
+            </div>
+          </div>
+          <div class="row-edit">
+            <input type="text" class="edit-name" maxlength="60" autocomplete="off" />
+            <input type="text" class="edit-detail" maxlength="60" autocomplete="off" placeholder="Series x reps, notas… (opcional)" />
+            <div class="confirm-actions">
+              <button class="cancel-btn">Cancelar</button>
+              <button class="run-btn">Guardar</button>
             </div>
           </div>
         </div>`);
@@ -677,14 +706,46 @@
           removeBtn.addEventListener(evt, clearHold)
         );
 
-        row.querySelector(".cancel-btn").addEventListener("click", () => {
+        row.querySelector(".row-confirm .cancel-btn").addEventListener("click", () => {
           row.classList.remove("confirming");
         });
-        row.querySelector(".delete-btn").addEventListener("click", () => {
+        row.querySelector(".row-confirm .delete-btn").addEventListener("click", () => {
           const idx = exercises.findIndex((e) => e.id === ex.id);
           if (idx >= 0) exercises.splice(idx, 1);
           persist();
           renderList();
+        });
+
+        // Tocar el ejercicio permite editar su texto en lugar de tener que borrarlo.
+        const editNameInput = row.querySelector(".edit-name");
+        const editDetailInput = row.querySelector(".edit-detail");
+
+        row.querySelector(".exercise-info").addEventListener("click", () => {
+          editNameInput.value = ex.name;
+          editDetailInput.value = ex.detail || "";
+          row.classList.add("editing");
+          editNameInput.focus();
+          editNameInput.select();
+        });
+
+        row.querySelector(".row-edit .cancel-btn").addEventListener("click", () => {
+          row.classList.remove("editing");
+        });
+
+        function saveEdit() {
+          const newName = editNameInput.value.trim();
+          if (!newName) return;
+          ex.name = newName;
+          ex.detail = editDetailInput.value.trim();
+          persist();
+          renderList();
+        }
+        row.querySelector(".row-edit .run-btn").addEventListener("click", saveEdit);
+        editNameInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") { e.preventDefault(); editDetailInput.focus(); }
+        });
+        editDetailInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") { e.preventDefault(); saveEdit(); }
         });
 
         list.appendChild(row);

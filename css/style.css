@@ -509,14 +509,6 @@ svg { display: block; flex-shrink: 0; }
   box-shadow: 0 6px 16px -6px rgba(255,106,61,0.6);
 }
 
-.day-hint {
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-faint);
-  padding-bottom: 4px;
-  flex-shrink: 0;
-}
-
 /* ---------- Editor de fase (ejercicios) ---------- */
 
 .exercise-list {
@@ -557,7 +549,7 @@ svg { display: block; flex-shrink: 0; }
 }
 .grip-btn svg { width: 18px; height: 18px; stroke: var(--text-faint); }
 
-.exercise-info { flex: 1; min-width: 0; }
+.exercise-info { flex: 1; min-width: 0; cursor: pointer; }
 .exercise-info .name {
   font-size: 15.5px;
   font-weight: 600;
@@ -615,6 +607,26 @@ svg { display: block; flex-shrink: 0; }
 }
 .cancel-btn { background: rgba(255,255,255,0.07); color: var(--text); }
 .delete-btn { background: var(--danger); color: #2a0710; }
+
+/* Edición de un ejercicio (aparece al tocar su nombre) */
+
+.row-edit {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+.exercise-row.editing .row-main { display: none; }
+.exercise-row.editing .row-edit { display: flex; }
+
+.row-edit input[type="text"] {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--card-border);
+  font-size: 15px;
+  outline: none;
+}
+.row-edit input[type="text"]:focus { border-color: var(--accent); }
 
 .add-exercise-form {
   flex-shrink: 0;
@@ -685,6 +697,39 @@ svg { display: block; flex-shrink: 0; }
 @keyframes sheet-up {
   from { transform: translateY(18px); opacity: .3; }
   to   { transform: translateY(0); opacity: 1; }
+}
+
+.sheet-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sheet-view-confirm { display: none; }
+.sheet.confirming .sheet-view-options { display: none; }
+.sheet.confirming .sheet-view-confirm { display: flex; }
+
+.sheet-confirm-text {
+  padding: 20px 16px 6px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sheet-confirm-actions {
+  display: flex;
+  gap: 10px;
+  padding: 10px 16px 16px;
+}
+.sheet-confirm-actions button { flex: 1; }
+
+.run-btn {
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14.5px;
+  font-weight: 700;
+  text-align: center;
+  background: var(--accent);
+  color: #1a0e08;
 }
 
 .sheet-title {

@@ -32,14 +32,18 @@ icons/                   iconos de la app (192, 512, maskable, apple-touch-icon)
    contenido edita cada uno de los tres botones.
 5. **Editor de fase** — lista de ejercicios de esa fase para el día
    activo. Cada ejercicio se puede reordenar arrastrándolo por su asa
-   (☰) y solo se elimina manteniendo pulsada la papelera 2 segundos
-   (pide confirmación, para evitar borrados accidentales).
+   (☰), se edita tocando su nombre (para no tener que borrarlo y
+   volver a escribirlo si te equivocas) y solo se elimina manteniendo
+   pulsada la papelera 2 segundos (pide confirmación, para evitar
+   borrados accidentales).
 
 Además, manteniendo pulsado 1,5 s uno de los tres botones de fase en
 el detalle de la rutina se abre un menú para copiar ese calentamiento
 / entrenamiento / enfriamiento a otro día, a todos los días de
 entrenamiento de esa rutina, o vaciarlo — así no hace falta escribir
-la misma rutina varias veces.
+la misma rutina varias veces. Cualquier opción del menú pide una
+segunda confirmación ("¿Seguro que quieres ejecutar este cambio?")
+antes de aplicarse.
 
 ## Probarla en local
 
