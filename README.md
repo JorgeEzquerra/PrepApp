@@ -23,7 +23,11 @@ icons/                   iconos de la app (192, 512, maskable, apple-touch-icon)
 1. **Inicio** — nombre "PrepApp" y dos botones: *Ver rutinas* (👁) y
    *Crear rutina* (+).
 2. **Rutinas** — lista de las rutinas creadas; flecha atrás arriba a
-   la izquierda; botón `+` para crear una nueva.
+   la izquierda; botón `+` para crear una nueva. Cada rutina se
+   elimina arrastrándola hacia la izquierda (pide confirmación) y pasa
+   a la **papelera** (botón 🗑 abajo a la derecha), donde se conserva 7
+   días —con opción de *Recuperar* o *Eliminar por completo*— antes de
+   borrarse sola.
 3. **Nueva/editar rutina** — nombre y selector de días de la semana
    (L M X J V S D).
 4. **Detalle de rutina** — título con el nombre de la rutina, tres
@@ -35,7 +39,10 @@ icons/                   iconos de la app (192, 512, maskable, apple-touch-icon)
    (☰), se edita tocando su nombre (para no tener que borrarlo y
    volver a escribirlo si te equivocas) y solo se elimina manteniendo
    pulsada la papelera 2 segundos (pide confirmación, para evitar
-   borrados accidentales).
+   borrados accidentales). Esta pantalla está pensada sobre todo para
+   repasar la rutina: el formulario para añadir un ejercicio nuevo
+   queda oculto tras un botón "+" pequeño y solo se despliega al
+   tocarlo.
 
 Además, manteniendo pulsado 1,5 s uno de los tres botones de fase en
 el detalle de la rutina se abre un menú para copiar ese calentamiento
@@ -96,4 +103,4 @@ carpeta o conectar el repo es suficiente, no hace falta build command.)
 - Los tamaños de icono cubren los requisitos de iOS
   (`apple-touch-icon`) y del `manifest.webmanifest` estándar
   (192/512, incluida una versión *maskable*).
-https://JorgeEzquerra.github.io/PrepApp/
+https://JorgeEzquerra.github.io/PrepApp/ jj new

@@ -47,6 +47,18 @@
     saveRoutines(routines);
   }
 
+  // Papelera: una rutina eliminada se conserva 7 días (por si fue un error)
+  // antes de borrarse por completo en automático.
+  const TRASH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+  function purgeExpiredTrash() {
+    const before = routines.length;
+    routines = routines.filter((r) => !(r.deletedAt && Date.now() - r.deletedAt > TRASH_TTL_MS));
+    return routines.length !== before;
+  }
+
+  if (purgeExpiredTrash()) persist();
+
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
@@ -117,6 +129,7 @@
     // [] -> home
     if (parts.length === 0) return { name: "home" };
     if (parts[0] === "routines") return { name: "routines" };
+    if (parts[0] === "trash") return { name: "trash" };
     if (parts[0] === "routine" && parts[1] === "new") return { name: "routine-form" };
     if (parts[0] === "routine" && parts[2] === "edit") return { name: "routine-form", id: parts[1] };
     if (parts[0] === "routine" && parts.length === 2) return { name: "routine-detail", id: parts[1] };
@@ -140,6 +153,9 @@
         break;
       case "routines":
         app.appendChild(screenRoutinesList());
+        break;
+      case "trash":
+        app.appendChild(screenTrash());
         break;
       case "routine-form":
         app.appendChild(screenRoutineForm(route.id));
@@ -233,6 +249,69 @@
     }
   }
 
+  // Arrastrar `row.row-main` hacia la izquierda; al superar el umbral,
+  // añade la clase "confirming" al row (que revela su .row-confirm).
+  // Los gestos verticales se ignoran para no romper el scroll de la lista.
+  function attachSwipeLeftToConfirm(row) {
+    const rowMain = row.querySelector(".row-main");
+    const THRESHOLD = -70;
+    const MAX_DRAG = -100;
+
+    let startX = 0;
+    let startY = 0;
+    let dx = 0;
+    let deciding = false;
+    let isHorizontal = false;
+    let pointerId = null;
+
+    rowMain.addEventListener("pointerdown", (e) => {
+      startX = e.clientX;
+      startY = e.clientY;
+      dx = 0;
+      deciding = true;
+      isHorizontal = false;
+      pointerId = e.pointerId;
+    });
+
+    rowMain.addEventListener("pointermove", (e) => {
+      if (pointerId !== e.pointerId) return;
+      const curDx = e.clientX - startX;
+      const curDy = e.clientY - startY;
+
+      if (deciding) {
+        if (Math.abs(curDx) > 8 || Math.abs(curDy) > 8) {
+          deciding = false;
+          if (Math.abs(curDx) > Math.abs(curDy)) {
+            isHorizontal = true;
+            rowMain.setPointerCapture(pointerId);
+            rowMain.classList.add("swiping");
+          }
+        }
+      }
+
+      if (isHorizontal) {
+        e.preventDefault();
+        dx = Math.max(MAX_DRAG, Math.min(0, curDx));
+        rowMain.style.transform = `translateX(${dx}px)`;
+      }
+    });
+
+    function endSwipe(e) {
+      if (pointerId !== e.pointerId) return;
+      rowMain.classList.remove("swiping");
+      rowMain.style.transform = "";
+      if (isHorizontal && dx <= THRESHOLD) {
+        row.classList.add("confirming");
+      }
+      deciding = false;
+      isHorizontal = false;
+      pointerId = null;
+    }
+
+    rowMain.addEventListener("pointerup", endSwipe);
+    rowMain.addEventListener("pointercancel", endSwipe);
+  }
+
   function topbar({ title = "", showBack = false, onBack = null, right = "" } = {}) {
     const bar = h(`<div class="topbar">
       ${showBack ? `<button class="back-btn" aria-label="Volver">${icon("arrowLeft")}</button>` : ""}
@@ -289,8 +368,9 @@
     );
 
     const scroll = h(`<div class="scroll"></div>`);
+    const activeRoutines = routines.filter((r) => !r.deletedAt);
 
-    if (routines.length === 0) {
+    if (activeRoutines.length === 0) {
       scroll.appendChild(
         h(`<div class="empty-state">
           ${icon("clipboard")}
@@ -299,32 +379,132 @@
       );
     } else {
       const list = h(`<div class="list"></div>`);
-      routines.forEach((r) => {
-        const row = h(`<div class="routine-row">
-          <button class="routine-btn" data-id="${r.id}">
-            <span class="name">${esc(r.name)}</span>
-            <span class="routine-days">
-              ${DAYS.map((d) => `<span class="d ${r.days.includes(d.key) ? "on" : ""}">${d.key}</span>`).join("")}
-            </span>
-          </button>
-          <button class="icon-btn danger" data-del="${r.id}" aria-label="Eliminar rutina">${icon("trash")}</button>
+      activeRoutines.forEach((r) => {
+        const row = h(`<div class="routine-row" data-id="${r.id}">
+          <div class="row-main">
+            <button class="routine-btn" data-id="${r.id}">
+              <span class="name">${esc(r.name)}</span>
+              <span class="routine-days">
+                ${DAYS.map((d) => `<span class="d ${r.days.includes(d.key) ? "on" : ""}">${d.key}</span>`).join("")}
+              </span>
+            </button>
+          </div>
+          <div class="row-confirm">
+            <div class="confirm-text">Eliminar esta rutina.</div>
+            <div class="confirm-actions">
+              <button class="cancel-btn">Cancelar</button>
+              <button class="delete-btn">Eliminar</button>
+            </div>
+          </div>
         </div>`);
+
         row.querySelector(".routine-btn").addEventListener("click", () => navigate(`#/routine/${r.id}`));
-        row.querySelector("[data-del]").addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (confirm(`¿Eliminar la rutina "${r.name}"?`)) {
-            routines = routines.filter((x) => x.id !== r.id);
-            persist();
-            render();
-          }
+        row.querySelector(".row-confirm .cancel-btn").addEventListener("click", () => {
+          row.classList.remove("confirming");
         });
+        row.querySelector(".row-confirm .delete-btn").addEventListener("click", () => {
+          r.deletedAt = Date.now();
+          persist();
+          render();
+        });
+
+        attachSwipeLeftToConfirm(row);
+
         list.appendChild(row);
       });
       scroll.appendChild(list);
     }
 
     screen.appendChild(scroll);
+    screen.appendChild(
+      h(`<button class="fab" id="btn-trash" aria-label="Papelera">${icon("trash")}</button>`)
+    );
     screen.querySelector("#btn-add").addEventListener("click", () => navigate("#/routine/new"));
+    screen.querySelector("#btn-trash").addEventListener("click", () => navigate("#/trash"));
+    return screen;
+  }
+
+  /* ---------------- Pantalla: Papelera de rutinas ---------------- */
+
+  function screenTrash() {
+    purgeExpiredTrash();
+
+    const screen = h(`<div class="screen"></div>`);
+    screen.appendChild(
+      topbar({
+        title: "Papelera",
+        showBack: true,
+        onBack: () => navigate("#/routines"),
+      })
+    );
+
+    const scroll = h(`<div class="scroll"></div>`);
+    const trashed = routines
+      .filter((r) => r.deletedAt)
+      .sort((a, b) => b.deletedAt - a.deletedAt);
+
+    if (trashed.length === 0) {
+      scroll.appendChild(
+        h(`<div class="empty-state">
+          ${icon("trash")}
+          <p>La papelera está vacía.<br>Las rutinas eliminadas se guardan aquí 7 días.</p>
+        </div>`)
+      );
+    } else {
+      const list = h(`<div class="list"></div>`);
+      trashed.forEach((r) => {
+        const days = Math.floor((Date.now() - r.deletedAt) / (24 * 60 * 60 * 1000));
+        const deletedLabel = days <= 0 ? "Eliminada hoy" : days === 1 ? "Eliminada ayer" : `Eliminada hace ${days} días`;
+
+        const row = h(`<div class="routine-row trash-row" data-id="${r.id}" data-state="main">
+          <div class="row-main">
+            <button class="routine-btn">
+              <span class="name">${esc(r.name)}</span>
+              <span class="trash-meta">${deletedLabel}</span>
+            </button>
+          </div>
+          <div class="row-actions">
+            <div class="confirm-text">${esc(r.name)}</div>
+            <div class="confirm-actions">
+              <button class="recover-btn">Recuperar</button>
+              <button class="purge-btn">Eliminar por completo</button>
+            </div>
+          </div>
+          <div class="row-confirm">
+            <div class="confirm-text">Eliminar esta rutina para siempre.</div>
+            <div class="confirm-actions">
+              <button class="cancel-btn">Cancelar</button>
+              <button class="delete-btn">Eliminar</button>
+            </div>
+          </div>
+        </div>`);
+
+        row.querySelector(".row-main .routine-btn").addEventListener("click", () => {
+          row.dataset.state = "actions";
+        });
+        row.querySelector(".recover-btn").addEventListener("click", () => {
+          delete r.deletedAt;
+          persist();
+          render();
+        });
+        row.querySelector(".purge-btn").addEventListener("click", () => {
+          row.dataset.state = "confirm";
+        });
+        row.querySelector(".row-confirm .cancel-btn").addEventListener("click", () => {
+          row.dataset.state = "actions";
+        });
+        row.querySelector(".row-confirm .delete-btn").addEventListener("click", () => {
+          routines = routines.filter((x) => x.id !== r.id);
+          persist();
+          render();
+        });
+
+        list.appendChild(row);
+      });
+      scroll.appendChild(list);
+    }
+
+    screen.appendChild(scroll);
     return screen;
   }
 
@@ -757,7 +937,14 @@
     renderList();
     screen.appendChild(scroll);
 
-    const form = h(`<div class="add-exercise-form">
+    // Esta pantalla es sobre todo para repasar la rutina: el formulario para
+    // añadir ejercicios queda oculto tras un botón "+" pequeño, y solo se
+    // despliega mientras se está usando.
+    const addBar = h(`<div class="add-toggle-bar">
+      <button class="add-toggle-btn" aria-label="Añadir ejercicio">${icon("plus")}</button>
+    </div>`);
+
+    const form = h(`<div class="add-exercise-form hidden">
       <div class="inputs">
         <input type="text" id="ex-name" placeholder="Ejercicio (ej. Sentadillas)" maxlength="60" autocomplete="off" />
         <input type="text" id="ex-detail" placeholder="Series x reps, notas… (opcional)" maxlength="60" autocomplete="off" />
@@ -774,16 +961,21 @@
     }
     nameInput.addEventListener("input", updateAddState);
 
+    function collapseForm() {
+      form.classList.add("hidden");
+      addBar.classList.remove("hidden");
+      nameInput.value = "";
+      detailInput.value = "";
+      updateAddState();
+    }
+
     function addExercise() {
       const name = nameInput.value.trim();
       if (!name) return;
       exercises.push({ id: uid(), name, detail: detailInput.value.trim() });
       persist();
-      nameInput.value = "";
-      detailInput.value = "";
-      updateAddState();
       renderList();
-      nameInput.focus();
+      collapseForm();
     }
 
     addBtn.addEventListener("click", addExercise);
@@ -794,6 +986,13 @@
       if (e.key === "Enter") { e.preventDefault(); addExercise(); }
     });
 
+    addBar.querySelector(".add-toggle-btn").addEventListener("click", () => {
+      addBar.classList.add("hidden");
+      form.classList.remove("hidden");
+      nameInput.focus();
+    });
+
+    screen.appendChild(addBar);
     screen.appendChild(form);
 
     return screen;

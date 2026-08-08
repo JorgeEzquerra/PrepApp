@@ -262,21 +262,25 @@ svg { display: block; flex-shrink: 0; }
 }
 
 .routine-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.routine-btn {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
   padding: 18px 20px;
   border-radius: var(--radius-md);
   background: var(--card);
   border: 1px solid var(--card-border);
+  overflow: hidden;
+}
+
+.routine-row .row-main { touch-action: pan-y; transition: transform .18s ease; }
+.routine-row .row-main.swiping { transition: none; }
+
+.routine-row.confirming .row-main { display: none; }
+.routine-row.confirming .row-confirm { display: flex; }
+
+.routine-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   text-align: left;
 }
 
@@ -307,6 +311,26 @@ svg { display: block; flex-shrink: 0; }
   color: var(--accent);
 }
 
+/* Papelera de rutinas */
+
+.trash-meta {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.trash-row .row-actions {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+.trash-row[data-state="actions"] .row-main { display: none; }
+.trash-row[data-state="actions"] .row-actions { display: flex; }
+.trash-row[data-state="confirm"] .row-main { display: none; }
+.trash-row[data-state="confirm"] .row-confirm { display: flex; }
+
+.recover-btn { background: var(--training); color: #10173a; }
+.purge-btn { background: var(--danger); color: #2a0710; }
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -324,16 +348,17 @@ svg { display: block; flex-shrink: 0; }
   position: absolute;
   right: calc(var(--safe-right) + 20px);
   bottom: calc(var(--safe-bottom) + 22px);
-  width: 56px;
-  height: 56px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--card);
+  border: 1px solid var(--card-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12px 28px -8px rgba(255,106,61,0.55);
+  box-shadow: 0 10px 24px -10px rgba(0,0,0,0.65);
 }
-.fab svg { width: 24px; height: 24px; stroke: #1a0e08; stroke-width: 2.4; }
+.fab svg { width: 22px; height: 22px; stroke: var(--danger); stroke-width: 2; }
 
 /* ---------- Formulario crear/editar rutina ---------- */
 
@@ -665,6 +690,27 @@ svg { display: block; flex-shrink: 0; }
 }
 .add-exercise-form .send svg { width: 20px; height: 20px; stroke: #1a0e08; }
 .add-exercise-form .send:disabled { opacity: .35; }
+
+.add-toggle-bar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 12px 20px calc(var(--safe-bottom) + 10px);
+  border-top: 1px solid var(--card-border);
+  background: var(--bg-elevated);
+}
+
+.add-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 38px;
+  border-radius: 19px;
+  background: var(--accent);
+  box-shadow: 0 8px 18px -8px rgba(255,106,61,0.55);
+}
+.add-toggle-btn svg { width: 17px; height: 17px; stroke: #1a0e08; stroke-width: 2.6; }
 
 /* ---------- Menú de opciones de fase (pulsación larga) ---------- */
 
