@@ -986,10 +986,19 @@
       if (e.key === "Enter") { e.preventDefault(); addExercise(); }
     });
 
-    addBar.querySelector(".add-toggle-btn").addEventListener("click", () => {
+    addBar.querySelector(".add-toggle-btn").addEventListener("click", (e) => {
+      e.stopPropagation(); // que este mismo toque no dispare el cierre "clic fuera" de abajo
       addBar.classList.add("hidden");
       form.classList.remove("hidden");
       nameInput.focus();
+    });
+
+    // Si el formulario está abierto y se toca fuera de él (sin llegar a
+    // añadir nada), se cierra solo y vuelve a aparecer el botón "+" pequeño.
+    screen.addEventListener("click", (e) => {
+      if (form.classList.contains("hidden")) return;
+      if (form.contains(e.target)) return;
+      collapseForm();
     });
 
     screen.appendChild(addBar);
