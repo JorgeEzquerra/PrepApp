@@ -192,6 +192,7 @@
     function startDrag(e, row) {
       if (row.classList.contains("confirming")) return;
       e.preventDefault();
+      e.stopPropagation(); // no confundir con el arrastre horizontal (swipe-to-delete) del row-main
       const pointerId = e.pointerId;
       row.setPointerCapture(pointerId);
       row.classList.add("dragging");
@@ -382,6 +383,7 @@
       activeRoutines.forEach((r) => {
         const row = h(`<div class="routine-row" data-id="${r.id}">
           <div class="row-main">
+            <button class="grip-btn" aria-label="Reordenar">${icon("grip")}</button>
             <button class="routine-btn" data-id="${r.id}">
               <span class="name">${esc(r.name)}</span>
               <span class="routine-days">
@@ -413,6 +415,10 @@
         list.appendChild(row);
       });
       scroll.appendChild(list);
+      attachDragReorder(list, activeRoutines, () => {
+        routines = [...activeRoutines, ...routines.filter((r) => r.deletedAt)];
+        persist();
+      });
     }
 
     screen.appendChild(scroll);
@@ -513,7 +519,9 @@
   function screenRoutineForm(id) {
     const editing = !!id;
     const existing = editing ? getRoutine(id) : null;
-    const backTarget = editing ? `#/routine/${id}` : "#/routines";
+    // Al crear una rutina nueva, "atrás" vuelve directo a la pantalla
+    // principal (sin pasar por el listado de rutinas).
+    const backTarget = editing ? `#/routine/${id}` : "#/";
 
     const state = {
       name: existing ? existing.name : "",
