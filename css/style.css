@@ -828,3 +828,21 @@ svg { display: block; flex-shrink: 0; }
 
 /* Utilidades */
 .hidden { display: none !important; }
+
+/* ---------- Bloqueo visual a vertical ----------
+   iOS Safari no soporta la Screen Orientation Lock API (y el
+   "orientation":"portrait" del manifest no siempre se respeta), así
+   que si el teléfono gira a horizontal, giramos nosotros el documento
+   entero -90° para que la app se siga viendo y usando en vertical. */
+@media screen and (orientation: landscape) {
+  html {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100vh;
+    height: 100vw;
+    overflow: hidden;
+    transform: rotate(-90deg);
+    transform-origin: left top;
+  }
+}

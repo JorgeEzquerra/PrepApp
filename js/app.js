@@ -912,8 +912,6 @@
           editNameInput.value = ex.name;
           editDetailInput.value = ex.detail || "";
           row.classList.add("editing");
-          editNameInput.focus();
-          editNameInput.select();
         });
 
         row.querySelector(".row-edit .cancel-btn").addEventListener("click", () => {
