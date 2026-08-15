@@ -600,6 +600,7 @@ svg { display: block; flex-shrink: 0; }
 }
 
 .remove-btn {
+  position: relative;
   width: 30px;
   height: 30px;
   display: flex;
@@ -608,6 +609,32 @@ svg { display: block; flex-shrink: 0; }
   flex-shrink: 0;
 }
 .remove-btn svg { width: 16px; height: 16px; stroke: var(--text-faint); }
+
+/* Anillo rojo que se va completando mientras se mantiene pulsada la
+   papelera, durante los 2 s que hacen falta para poder confirmar el
+   borrado. Si se suelta antes, se vacía de nuevo. */
+.remove-btn .hold-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 38px;
+  height: 38px;
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+.remove-btn .hold-ring circle {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 100.5;
+  stroke-dashoffset: 100.5;
+  transition: stroke-dashoffset .15s linear;
+}
+.remove-btn.holding .hold-ring circle {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 2s linear;
+}
 
 /* Confirmación de borrado (aparece tras mantener pulsada la papelera 2 s) */
 
@@ -829,20 +856,21 @@ svg { display: block; flex-shrink: 0; }
 /* Utilidades */
 .hidden { display: none !important; }
 
-/* ---------- Bloqueo visual a vertical ----------
+/* ---------- Bloqueo de orientación ----------
    iOS Safari no soporta la Screen Orientation Lock API (y el
    "orientation":"portrait" del manifest no siempre se respeta), así
-   que si el teléfono gira a horizontal, giramos nosotros el documento
-   entero -90° para que la app se siga viendo y usando en vertical. */
-@media screen and (orientation: landscape) {
-  html {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: 100vh;
-    height: 100vw;
-    overflow: hidden;
-    transform: rotate(-90deg);
-    transform-origin: left top;
-  }
+   que en vez de intentar compensar la rotación con CSS (poco fiable:
+   según hacia qué lado gira el móvil el signo cambia y se ve del
+   revés), directamente "congelamos" el tamaño de <html> a sus
+   dimensiones iniciales en vertical mediante JS (ver lockPortraitViewport
+   en app.js). Así, si el móvil gira, la pantalla no reacciona y se
+   queda tal cual estaba — igual que con el bloqueo de orientación del
+   propio dispositivo activado.
+   El transform (aunque no rote nada) convierte a <html> en el
+   contenedor de los elementos position:fixed de dentro (como #app),
+   para que también se queden anclados a ese tamaño congelado y no al
+   viewport real. */
+html {
+  transform: translateZ(0);
+  overflow: hidden;
 }

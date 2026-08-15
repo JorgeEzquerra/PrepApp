@@ -137,8 +137,23 @@
     return { name: "home" };
   }
 
+  // Bloqueo de orientación: fijamos <html> a sus dimensiones iniciales
+  // en vertical (una sola vez, al cargar) y ya no se vuelven a tocar.
+  // Si el móvil gira a horizontal, la página no se entera y se queda
+  // exactamente igual — como con el bloqueo de orientación del propio
+  // dispositivo. (El "translateZ(0)" en el CSS de <html> es lo que hace
+  // que este tamaño fijo también aplique a los elementos position:fixed
+  // de dentro, como #app.)
+  function lockPortraitViewport() {
+    const w = Math.min(window.innerWidth, window.innerHeight);
+    const h = Math.max(window.innerWidth, window.innerHeight);
+    document.documentElement.style.width = `${w}px`;
+    document.documentElement.style.height = `${h}px`;
+  }
+
   window.addEventListener("hashchange", render);
   window.addEventListener("DOMContentLoaded", () => {
+    lockPortraitViewport();
     render();
     registerServiceWorker();
   });
@@ -854,7 +869,12 @@
               <div class="name">${esc(ex.name)}</div>
               ${ex.detail ? `<div class="detail">${esc(ex.detail)}</div>` : ""}
             </div>
-            <button class="remove-btn" aria-label="Eliminar">${icon("trash")}</button>
+            <button class="remove-btn" aria-label="Eliminar">
+              <svg class="hold-ring" viewBox="0 0 36 36" aria-hidden="true">
+                <circle cx="18" cy="18" r="16" />
+              </svg>
+              ${icon("trash")}
+            </button>
           </div>
           <div class="row-confirm">
             <div class="confirm-text">Eliminar este ejercicio.</div>
@@ -881,12 +901,15 @@
             clearTimeout(holdTimer);
             holdTimer = null;
           }
+          removeBtn.classList.remove("holding");
         }
         removeBtn.addEventListener("pointerdown", (e) => {
           e.preventDefault();
           clearHold();
+          removeBtn.classList.add("holding"); // dispara el anillo rojo que se va completando en 2 s
           holdTimer = setTimeout(() => {
             holdTimer = null;
+            removeBtn.classList.remove("holding");
             row.classList.add("confirming");
           }, 2000);
         });
