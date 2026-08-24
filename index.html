@@ -25,6 +25,17 @@
 <body>
   <div id="app" role="main"></div>
 
+  <!-- Aviso a pantalla completa cuando el móvil está en horizontal: la
+       app de debajo se queda congelada tal cual, sin reaccionar. -->
+  <div id="rotate-lock" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="7" y="2" width="10" height="16" rx="2" />
+      <path d="M12 20a7 7 0 0 0 7-7" />
+      <path d="M21.5 14.5 19 12l-2 2.5" />
+    </svg>
+    <p>Gira el teléfono a vertical para usar PrepApp</p>
+  </div>
+
   <script src="js/app.js"></script>
 </body>
 </html>

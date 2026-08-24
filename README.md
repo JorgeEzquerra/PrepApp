@@ -22,27 +22,42 @@ icons/                   iconos de la app (192, 512, maskable, apple-touch-icon)
 
 1. **Inicio** — nombre "PrepApp" y dos botones: *Ver rutinas* (👁) y
    *Crear rutina* (+).
-2. **Rutinas** — lista de las rutinas creadas; flecha atrás arriba a
-   la izquierda; botón `+` para crear una nueva. Cada rutina se
-   elimina arrastrándola hacia la izquierda (pide confirmación) y pasa
-   a la **papelera** (botón 🗑 abajo a la derecha), donde se conserva 7
-   días —con opción de *Recuperar* o *Eliminar por completo*— antes de
-   borrarse sola.
-3. **Nueva/editar rutina** — nombre y selector de días de la semana
-   (L M X J V S D).
-4. **Detalle de rutina** — título con el nombre de la rutina, tres
+2. **Rutinas** — lista plana de todas las rutinas de todas las
+   carpetas, en el orden en que se crearon (o se reordenaron
+   arrastrándolas por su asa ☰); flecha atrás arriba a la izquierda;
+   botón `+` para crear una nueva y botón *Carpetas* para organizarlas.
+   Cada rutina se elimina arrastrándola hacia la izquierda (pide
+   confirmación) y pasa a la **papelera** (botón 🗑 abajo a la
+   derecha), donde se conserva 7 días —con opción de *Recuperar* o
+   *Eliminar por completo*— antes de borrarse sola.
+3. **Carpetas** — agrupan rutinas (por ejemplo, "Alta intensidad" con
+   varias semanas dentro). Se crean, renombran, duplican (con todas
+   sus rutinas y ejercicios, como copia independiente) y eliminan
+   —con su propia papelera de 7 días, igual que la de rutinas—.
+   Tocar una carpeta lleva a sus rutinas (mismo listado de siempre,
+   pero solo las suyas, con su nombre como título); el `+` de ahí
+   añade rutinas directamente a esa carpeta. Las rutinas creadas
+   antes de que existieran las carpetas se agrupan solas en una
+   "Carpeta 1" la primera vez que se abre esta versión, para que no
+   se pierda nada.
+4. **Nueva/editar rutina** — nombre, selector de días de la semana
+   (L M X J V S D) y, si no se creó ya dentro de una carpeta concreta,
+   selector de en qué carpeta guardarla (con opción de crear una
+   carpeta nueva ahí mismo).
+5. **Detalle de rutina** — título con el nombre de la rutina, tres
    botones (Calentamiento / Entrenamiento / Enfriamiento) y, al fondo,
    los días elegidos como *toggle*: el día activo determina qué
    contenido edita cada uno de los tres botones.
-5. **Editor de fase** — lista de ejercicios de esa fase para el día
+6. **Editor de fase** — lista de ejercicios de esa fase para el día
    activo. Cada ejercicio se puede reordenar arrastrándolo por su asa
    (☰), se edita tocando su nombre (para no tener que borrarlo y
    volver a escribirlo si te equivocas) y solo se elimina manteniendo
-   pulsada la papelera 2 segundos (pide confirmación, para evitar
-   borrados accidentales). Esta pantalla está pensada sobre todo para
-   repasar la rutina: el formulario para añadir un ejercicio nuevo
-   queda oculto tras un botón "+" pequeño y solo se despliega al
-   tocarlo.
+   pulsada la papelera 2 segundos —con un anillo rojo que se va
+   completando mientras se mantiene pulsada— (pide confirmación, para
+   evitar borrados accidentales). Esta pantalla está pensada sobre
+   todo para repasar la rutina: el formulario para añadir un ejercicio
+   nuevo queda oculto tras un botón "+" pequeño, solo se despliega al
+   tocarlo, y se cierra solo si se toca fuera de él.
 
 Además, manteniendo pulsado 1,5 s uno de los tres botones de fase en
 el detalle de la rutina se abre un menú para copiar ese calentamiento
@@ -103,4 +118,11 @@ carpeta o conectar el repo es suficiente, no hace falta build command.)
 - Los tamaños de icono cubren los requisitos de iOS
   (`apple-touch-icon`) y del `manifest.webmanifest` estándar
   (192/512, incluida una versión *maskable*).
+- La app está pensada solo para uso en vertical: como iOS Safari no
+  permite bloquear la orientación desde una web, al girar el móvil a
+  horizontal se tapa toda la pantalla con un aviso pidiendo volver a
+  vertical (la app de debajo se queda congelada tal cual, sin
+  reaccionar ni recalcular nada).
 https://JorgeEzquerra.github.io/PrepApp/ jj new
+jj new
+

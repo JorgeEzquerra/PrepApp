@@ -85,6 +85,133 @@
     return DAYS[idx].key;
   }
 
+  /* ---------------- Almacenamiento: carpetas ---------------- */
+
+  const FOLDERS_KEY = "prepapp_folders_v1";
+  const FOLDER_SEQ_KEY = "prepapp_folder_seq_v1";
+
+  function loadFolders() {
+    try {
+      const raw = localStorage.getItem(FOLDERS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.warn("No se pudo leer las carpetas", e);
+      return [];
+    }
+  }
+
+  function saveFolders(list) {
+    localStorage.setItem(FOLDERS_KEY, JSON.stringify(list));
+  }
+
+  let folders = loadFolders();
+
+  function persistFolders() {
+    saveFolders(folders);
+  }
+
+  // Papelera de carpetas: mismo funcionamiento que la de rutinas (7 días).
+  function purgeExpiredFolderTrash() {
+    const before = folders.length;
+    folders = folders.filter((f) => !(f.deletedAt && Date.now() - f.deletedAt > TRASH_TTL_MS));
+    return folders.length !== before;
+  }
+
+  if (purgeExpiredFolderTrash()) persistFolders();
+
+  function getFolder(id) {
+    return folders.find((f) => f.id === id);
+  }
+
+  // Sugerencia de nombre para la próxima carpeta ("Carpeta N"), sin
+  // consumir aún el contador (solo se consume al crearla de verdad).
+  function peekNextFolderNumber() {
+    return parseInt(localStorage.getItem(FOLDER_SEQ_KEY) || "0", 10) + 1;
+  }
+
+  function bumpFolderSeq() {
+    const n = peekNextFolderNumber();
+    localStorage.setItem(FOLDER_SEQ_KEY, String(n));
+    return n;
+  }
+
+  // Carpeta "Carpeta 1": la crea la migración de rutinas antiguas, y
+  // también sirve de destino automático para quien crea su primerísima
+  // rutina y todavía no tiene ninguna carpeta.
+  function ensureDefaultFolder() {
+    let f = folders.find((x) => x.name === "Carpeta 1");
+    if (!f) {
+      f = { id: uid(), name: "Carpeta 1" };
+      folders.push(f);
+      if (parseInt(localStorage.getItem(FOLDER_SEQ_KEY) || "0", 10) < 1) {
+        localStorage.setItem(FOLDER_SEQ_KEY, "1");
+      }
+      persistFolders();
+    }
+    return f;
+  }
+
+  // Migración: las rutinas creadas antes de que existieran las carpetas no
+  // tienen "folderId". La primera vez que se detectan, se agrupan todas en
+  // una carpeta nueva llamada "Carpeta 1" para que no se pierda nada.
+  function migrateRoutinesIntoFolders() {
+    const orphaned = routines.filter((r) => !r.folderId);
+    if (orphaned.length === 0) return false;
+    const defaultFolder = ensureDefaultFolder();
+    orphaned.forEach((r) => {
+      r.folderId = defaultFolder.id;
+    });
+    persistFolders();
+    return true;
+  }
+
+  if (migrateRoutinesIntoFolders()) persist();
+
+  // Una rutina solo es visible si ni ella ni su carpeta están en la
+  // papelera (son dos papeleras independientes: recuperar la carpeta no
+  // resucita una rutina que además se borró a mano, y viceversa).
+  function isRoutineVisible(r) {
+    if (r.deletedAt) return false;
+    const folder = getFolder(r.folderId);
+    return !!folder && !folder.deletedAt;
+  }
+
+  function deepCloneRoutine(routine, folderId) {
+    const clone = {
+      id: uid(),
+      folderId,
+      name: routine.name,
+      days: [...routine.days],
+      activeDay: routine.activeDay,
+      phases: {},
+    };
+    PHASES.forEach((ph) => {
+      clone.phases[ph.key] = {};
+      const src = (routine.phases && routine.phases[ph.key]) || {};
+      Object.keys(src).forEach((dayKey) => {
+        clone.phases[ph.key][dayKey] = (src[dayKey] || []).map((ex) => ({
+          id: uid(),
+          name: ex.name,
+          detail: ex.detail,
+        }));
+      });
+    });
+    return clone;
+  }
+
+  // Duplica una carpeta entera: la carpeta y todas sus rutinas (con sus
+  // ejercicios) quedan copiadas de forma independiente.
+  function duplicateFolder(folder) {
+    const newFolder = { id: uid(), name: `${folder.name} (copia)` };
+    folders.push(newFolder);
+    routines
+      .filter((r) => r.folderId === folder.id && !r.deletedAt)
+      .forEach((r) => routines.push(deepCloneRoutine(r, newFolder.id)));
+    persistFolders();
+    persist();
+    return newFolder;
+  }
+
   /* ---------------- Iconos SVG ---------------- */
 
   const ICONS = {
@@ -99,6 +226,8 @@
     pencil: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/></svg>`,
     clipboard: `<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1Z"/><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 12h6M9 16h4"/></svg>`,
     grip: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>`,
+    folder: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>`,
+    copy: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`,
   };
 
   function icon(name) {
@@ -130,30 +259,20 @@
     if (parts.length === 0) return { name: "home" };
     if (parts[0] === "routines") return { name: "routines" };
     if (parts[0] === "trash") return { name: "trash" };
-    if (parts[0] === "routine" && parts[1] === "new") return { name: "routine-form" };
+    if (parts[0] === "routine" && parts[1] === "new") return { name: "routine-form", presetFolderId: parts[2] || null };
     if (parts[0] === "routine" && parts[2] === "edit") return { name: "routine-form", id: parts[1] };
     if (parts[0] === "routine" && parts.length === 2) return { name: "routine-detail", id: parts[1] };
     if (parts[0] === "routine" && parts.length === 3) return { name: "phase-editor", id: parts[1], phase: parts[2] };
+    if (parts[0] === "folders" && parts.length === 1) return { name: "folders" };
+    if (parts[0] === "folders" && parts[1] === "new") return { name: "folder-form" };
+    if (parts[0] === "folders" && parts[1] === "trash") return { name: "folders-trash" };
+    if (parts[0] === "folders" && parts[2] === "edit") return { name: "folder-form", id: parts[1] };
+    if (parts[0] === "folders" && parts.length === 2) return { name: "folder-routines", id: parts[1] };
     return { name: "home" };
-  }
-
-  // Bloqueo de orientación: fijamos <html> a sus dimensiones iniciales
-  // en vertical (una sola vez, al cargar) y ya no se vuelven a tocar.
-  // Si el móvil gira a horizontal, la página no se entera y se queda
-  // exactamente igual — como con el bloqueo de orientación del propio
-  // dispositivo. (El "translateZ(0)" en el CSS de <html> es lo que hace
-  // que este tamaño fijo también aplique a los elementos position:fixed
-  // de dentro, como #app.)
-  function lockPortraitViewport() {
-    const w = Math.min(window.innerWidth, window.innerHeight);
-    const h = Math.max(window.innerWidth, window.innerHeight);
-    document.documentElement.style.width = `${w}px`;
-    document.documentElement.style.height = `${h}px`;
   }
 
   window.addEventListener("hashchange", render);
   window.addEventListener("DOMContentLoaded", () => {
-    lockPortraitViewport();
     render();
     registerServiceWorker();
   });
@@ -167,19 +286,31 @@
         app.appendChild(screenHome());
         break;
       case "routines":
-        app.appendChild(screenRoutinesList());
+        app.appendChild(screenRoutinesList(null));
         break;
       case "trash":
         app.appendChild(screenTrash());
         break;
       case "routine-form":
-        app.appendChild(screenRoutineForm(route.id));
+        app.appendChild(screenRoutineForm(route.id, route.presetFolderId));
         break;
       case "routine-detail":
         app.appendChild(screenRoutineDetail(route.id));
         break;
       case "phase-editor":
         app.appendChild(screenPhaseEditor(route.id, route.phase));
+        break;
+      case "folders":
+        app.appendChild(screenFoldersList());
+        break;
+      case "folder-form":
+        app.appendChild(screenFolderForm(route.id));
+        break;
+      case "folders-trash":
+        app.appendChild(screenFoldersTrash());
+        break;
+      case "folder-routines":
+        app.appendChild(screenRoutinesList(route.id));
         break;
       default:
         app.appendChild(screenHome());
@@ -372,25 +503,36 @@
 
   /* ---------------- Pantalla: Lista de rutinas ---------------- */
 
-  function screenRoutinesList() {
+  // folderId === null -> listado plano de siempre (todas las rutinas).
+  // folderId === "<id>" -> solo las rutinas de esa carpeta.
+  function screenRoutinesList(folderId) {
+    const folder = folderId ? getFolder(folderId) : null;
+    if (folderId && !folder) {
+      navigate("#/folders");
+      return h(`<div class="screen"></div>`);
+    }
+
     const screen = h(`<div class="screen"></div>`);
     screen.appendChild(
       topbar({
-        title: "Rutinas",
+        title: folder ? folder.name : "Rutinas",
         showBack: true,
-        onBack: () => navigate("#/"),
-        right: `<button class="icon-btn" id="btn-add">${icon("plus")}</button>`,
+        onBack: () => navigate(folder ? "#/folders" : "#/"),
+        right: `
+          ${folder ? "" : `<button class="pill-btn" id="btn-folders">${icon("folder")} Carpetas</button>`}
+          <button class="icon-btn" id="btn-add">${icon("plus")}</button>
+        `,
       })
     );
 
     const scroll = h(`<div class="scroll"></div>`);
-    const activeRoutines = routines.filter((r) => !r.deletedAt);
+    const activeRoutines = routines.filter((r) => isRoutineVisible(r) && (!folder || r.folderId === folder.id));
 
     if (activeRoutines.length === 0) {
       scroll.appendChild(
         h(`<div class="empty-state">
           ${icon("clipboard")}
-          <p>Todavía no tienes rutinas.<br>Crea la primera para empezar.</p>
+          <p>${folder ? "Esta carpeta no tiene rutinas todavía." : "Todavía no tienes rutinas."}<br>Crea la primera para empezar.</p>
         </div>`)
       );
     } else {
@@ -431,7 +573,11 @@
       });
       scroll.appendChild(list);
       attachDragReorder(list, activeRoutines, () => {
-        routines = [...activeRoutines, ...routines.filter((r) => r.deletedAt)];
+        // Válido tanto para el listado plano como para uno filtrado por
+        // carpeta: lo de fuera de este listado (otras carpetas, papelera)
+        // se queda intacto; solo se reordena el subconjunto mostrado.
+        const shownIds = new Set(activeRoutines.map((r) => r.id));
+        routines = [...routines.filter((r) => !shownIds.has(r.id)), ...activeRoutines];
         persist();
       });
     }
@@ -440,8 +586,12 @@
     screen.appendChild(
       h(`<button class="fab" id="btn-trash" aria-label="Papelera">${icon("trash")}</button>`)
     );
-    screen.querySelector("#btn-add").addEventListener("click", () => navigate("#/routine/new"));
+    const addTarget = folder ? `#/routine/new/${folder.id}` : "#/routine/new";
+    screen.querySelector("#btn-add").addEventListener("click", () => navigate(addTarget));
     screen.querySelector("#btn-trash").addEventListener("click", () => navigate("#/trash"));
+    if (!folder) {
+      screen.querySelector("#btn-folders").addEventListener("click", () => navigate("#/folders"));
+    }
     return screen;
   }
 
@@ -529,18 +679,253 @@
     return screen;
   }
 
+  /* ---------------- Pantalla: Carpetas ---------------- */
+
+  function screenFoldersList() {
+    const screen = h(`<div class="screen"></div>`);
+    screen.appendChild(
+      topbar({
+        title: "Carpetas",
+        showBack: true,
+        onBack: () => navigate("#/routines"),
+        right: `<button class="icon-btn" id="btn-add">${icon("plus")}</button>`,
+      })
+    );
+
+    const scroll = h(`<div class="scroll"></div>`);
+    const activeFolders = folders.filter((f) => !f.deletedAt);
+
+    if (activeFolders.length === 0) {
+      scroll.appendChild(
+        h(`<div class="empty-state">
+          ${icon("folder")}
+          <p>Todavía no tienes carpetas.<br>Crea la primera para empezar.</p>
+        </div>`)
+      );
+    } else {
+      const list = h(`<div class="list"></div>`);
+      activeFolders.forEach((f) => {
+        const count = routines.filter((r) => isRoutineVisible(r) && r.folderId === f.id).length;
+        const row = h(`<div class="routine-row" data-id="${f.id}">
+          <div class="row-main">
+            <button class="routine-btn" data-id="${f.id}">
+              <span class="name">${esc(f.name)}</span>
+              <span class="trash-meta">${count} ${count === 1 ? "rutina" : "rutinas"}</span>
+            </button>
+            <button class="icon-btn" aria-label="Editar carpeta">${icon("pencil")}</button>
+          </div>
+        </div>`);
+
+        row.querySelector(".routine-btn").addEventListener("click", () => navigate(`#/folders/${f.id}`));
+        row.querySelector(".icon-btn").addEventListener("click", (e) => {
+          e.stopPropagation();
+          navigate(`#/folders/${f.id}/edit`);
+        });
+
+        list.appendChild(row);
+      });
+      scroll.appendChild(list);
+    }
+
+    screen.appendChild(scroll);
+    screen.appendChild(
+      h(`<button class="fab" id="btn-trash" aria-label="Papelera de carpetas">${icon("trash")}</button>`)
+    );
+    screen.querySelector("#btn-add").addEventListener("click", () => navigate("#/folders/new"));
+    screen.querySelector("#btn-trash").addEventListener("click", () => navigate("#/folders/trash"));
+    return screen;
+  }
+
+  /* ---------------- Pantalla: Crear / editar carpeta ---------------- */
+
+  function screenFolderForm(id) {
+    const editing = !!id;
+    const existing = editing ? getFolder(id) : null;
+    if (editing && !existing) {
+      navigate("#/folders");
+      return h(`<div class="screen"></div>`);
+    }
+
+    const state = { name: existing ? existing.name : `Carpeta ${peekNextFolderNumber()}` };
+
+    const screen = h(`<div class="screen"></div>`);
+    screen.appendChild(
+      topbar({
+        title: editing ? "Editar carpeta" : "Nueva carpeta",
+        showBack: true,
+        onBack: () => navigate("#/folders"),
+      })
+    );
+
+    const scroll = h(`<div class="scroll"></div>`);
+    scroll.appendChild(h(`
+      <div class="field">
+        <label for="folder-name">Nombre de la carpeta</label>
+        <input type="text" id="folder-name" placeholder="Ej. Alta intensidad" maxlength="40" value="${esc(state.name)}" autocomplete="off" />
+      </div>
+    `));
+
+    const saveBtn = h(`<button class="primary-btn" id="save-btn">${editing ? "Guardar cambios" : "Crear carpeta"}</button>`);
+    scroll.appendChild(saveBtn);
+
+    if (editing) {
+      const dupBtn = h(`<button class="secondary-btn" id="dup-btn">${icon("copy")} Duplicar carpeta</button>`);
+      scroll.appendChild(dupBtn);
+      dupBtn.addEventListener("click", () => {
+        const copy = duplicateFolder(existing);
+        navigate(`#/folders/${copy.id}`);
+      });
+
+      const delBtn = h(`<button class="text-btn" id="del-btn">Eliminar carpeta</button>`);
+      scroll.appendChild(delBtn);
+      delBtn.addEventListener("click", () => {
+        if (confirm(`¿Eliminar la carpeta "${existing.name}"? Sus rutinas se irán con ella a la papelera.`)) {
+          existing.deletedAt = Date.now();
+          persistFolders();
+          navigate("#/folders");
+        }
+      });
+    }
+
+    screen.appendChild(scroll);
+
+    const nameInput = scroll.querySelector("#folder-name");
+    function updateSaveState() {
+      saveBtn.disabled = state.name.trim().length === 0;
+    }
+    nameInput.addEventListener("input", (e) => {
+      state.name = e.target.value;
+      updateSaveState();
+    });
+    updateSaveState();
+
+    saveBtn.addEventListener("click", () => {
+      const name = state.name.trim();
+      if (!name) return;
+      if (editing) {
+        existing.name = name;
+        persistFolders();
+        navigate("#/folders");
+      } else {
+        bumpFolderSeq();
+        const created = { id: uid(), name };
+        folders.push(created);
+        persistFolders();
+        navigate(`#/folders/${created.id}`);
+      }
+    });
+
+    return screen;
+  }
+
+  /* ---------------- Pantalla: Papelera de carpetas ---------------- */
+
+  function screenFoldersTrash() {
+    purgeExpiredFolderTrash();
+
+    const screen = h(`<div class="screen"></div>`);
+    screen.appendChild(
+      topbar({
+        title: "Papelera de carpetas",
+        showBack: true,
+        onBack: () => navigate("#/folders"),
+      })
+    );
+
+    const scroll = h(`<div class="scroll"></div>`);
+    const trashed = folders.filter((f) => f.deletedAt).sort((a, b) => b.deletedAt - a.deletedAt);
+
+    if (trashed.length === 0) {
+      scroll.appendChild(
+        h(`<div class="empty-state">
+          ${icon("trash")}
+          <p>La papelera de carpetas está vacía.<br>Las carpetas eliminadas se guardan aquí 7 días.</p>
+        </div>`)
+      );
+    } else {
+      const list = h(`<div class="list"></div>`);
+      trashed.forEach((f) => {
+        const days = Math.floor((Date.now() - f.deletedAt) / (24 * 60 * 60 * 1000));
+        const deletedLabel = days <= 0 ? "Eliminada hoy" : days === 1 ? "Eliminada ayer" : `Eliminada hace ${days} días`;
+
+        const row = h(`<div class="routine-row trash-row" data-id="${f.id}" data-state="main">
+          <div class="row-main">
+            <button class="routine-btn">
+              <span class="name">${esc(f.name)}</span>
+              <span class="trash-meta">${deletedLabel}</span>
+            </button>
+          </div>
+          <div class="row-actions">
+            <div class="confirm-text">${esc(f.name)}</div>
+            <div class="confirm-actions">
+              <button class="recover-btn">Recuperar</button>
+              <button class="purge-btn">Eliminar por completo</button>
+            </div>
+          </div>
+          <div class="row-confirm">
+            <div class="confirm-text">Eliminar esta carpeta para siempre, con las rutinas que tenga dentro.</div>
+            <div class="confirm-actions">
+              <button class="cancel-btn">Cancelar</button>
+              <button class="delete-btn">Eliminar</button>
+            </div>
+          </div>
+        </div>`);
+
+        row.querySelector(".row-main .routine-btn").addEventListener("click", () => {
+          row.dataset.state = "actions";
+        });
+        row.querySelector(".recover-btn").addEventListener("click", () => {
+          delete f.deletedAt;
+          persistFolders();
+          render();
+        });
+        row.querySelector(".purge-btn").addEventListener("click", () => {
+          row.dataset.state = "confirm";
+        });
+        row.querySelector(".row-confirm .cancel-btn").addEventListener("click", () => {
+          row.dataset.state = "actions";
+        });
+        row.querySelector(".row-confirm .delete-btn").addEventListener("click", () => {
+          folders = folders.filter((x) => x.id !== f.id);
+          routines = routines.filter((r) => r.folderId !== f.id);
+          persistFolders();
+          persist();
+          render();
+        });
+
+        list.appendChild(row);
+      });
+      scroll.appendChild(list);
+    }
+
+    screen.appendChild(scroll);
+    return screen;
+  }
+
   /* ---------------- Pantalla: Crear / editar rutina ---------------- */
 
-  function screenRoutineForm(id) {
+  function screenRoutineForm(id, presetFolderId) {
     const editing = !!id;
     const existing = editing ? getRoutine(id) : null;
-    // Al crear una rutina nueva, "atrás" vuelve directo a la pantalla
-    // principal (sin pasar por el listado de rutinas).
-    const backTarget = editing ? `#/routine/${id}` : "#/";
+    const lockedFolder = !editing && presetFolderId ? getFolder(presetFolderId) : null;
+    // Solo se pregunta la carpeta cuando hace falta: al editar no se toca,
+    // y al crear desde dentro de una carpeta ya se sabe cuál es.
+    const needsFolderPicker = !editing && !lockedFolder;
+    const activeFolders = folders.filter((f) => !f.deletedAt);
+
+    // Al crear una rutina nueva, "atrás" vuelve a la carpeta de origen si
+    // se entró desde una, o si no directo a la pantalla principal (sin
+    // pasar por ningún listado intermedio).
+    const backTarget = editing
+      ? `#/routine/${id}`
+      : lockedFolder
+      ? `#/folders/${lockedFolder.id}`
+      : "#/";
 
     const state = {
       name: existing ? existing.name : "",
       days: existing ? [...existing.days] : [],
+      folderId: lockedFolder ? lockedFolder.id : null,
     };
 
     const screen = h(`<div class="screen"></div>`);
@@ -569,6 +954,74 @@
       </div>
     `));
 
+    let folderPickerEl = null;
+    let folderOptsEl = null;
+    if (needsFolderPicker) {
+      // Si el usuario todavía no tiene ninguna carpeta (primera rutina de
+      // todas), no le pedimos que elija: se le crea "Carpeta 1" sola,
+      // igual que a quien ya tenía rutinas antes de esta función.
+      if (activeFolders.length === 0) {
+        state.usesDefaultFolder = true;
+      } else {
+        const preselected = activeFolders.find((f) => f.name === "Carpeta 1") || activeFolders[0];
+        state.folderId = preselected.id;
+
+        folderPickerEl = h(`
+          <div class="field">
+            <label>Carpeta</label>
+            <div class="folder-picker" id="folder-picker"></div>
+            <button type="button" class="folder-new-toggle" id="folder-new-toggle">${icon("plus")} Nueva carpeta</button>
+            <div class="folder-new-form hidden" id="folder-new-form">
+              <input type="text" id="new-folder-name" placeholder="Nombre de la carpeta" maxlength="40" autocomplete="off" />
+              <button type="button" class="run-btn" id="folder-new-confirm">Crear</button>
+            </div>
+          </div>
+        `);
+        folderOptsEl = folderPickerEl.querySelector("#folder-picker");
+
+        function renderFolderOpts() {
+          folderOptsEl.innerHTML = "";
+          folders
+            .filter((f) => !f.deletedAt)
+            .forEach((f) => {
+              const opt = h(`<button type="button" class="folder-opt ${f.id === state.folderId ? "on" : ""}" data-folder-id="${f.id}">${esc(f.name)}</button>`);
+              opt.addEventListener("click", () => {
+                state.folderId = f.id;
+                folderOptsEl.querySelectorAll(".folder-opt").forEach((o) => o.classList.toggle("on", o.dataset.folderId === f.id));
+                updateSaveState();
+              });
+              folderOptsEl.appendChild(opt);
+            });
+        }
+        renderFolderOpts();
+
+        const newToggle = folderPickerEl.querySelector("#folder-new-toggle");
+        const newForm = folderPickerEl.querySelector("#folder-new-form");
+        const newNameInput = folderPickerEl.querySelector("#new-folder-name");
+        newToggle.addEventListener("click", () => {
+          newToggle.classList.add("hidden");
+          newForm.classList.remove("hidden");
+          newNameInput.value = `Carpeta ${peekNextFolderNumber()}`;
+          newNameInput.focus();
+          newNameInput.select();
+        });
+        folderPickerEl.querySelector("#folder-new-confirm").addEventListener("click", () => {
+          const name = newNameInput.value.trim() || `Carpeta ${peekNextFolderNumber()}`;
+          bumpFolderSeq();
+          const created = { id: uid(), name };
+          folders.push(created);
+          persistFolders();
+          state.folderId = created.id;
+          renderFolderOpts();
+          newForm.classList.add("hidden");
+          newToggle.classList.remove("hidden");
+          updateSaveState();
+        });
+
+        scroll.appendChild(folderPickerEl);
+      }
+    }
+
     const saveBtn = h(`<button class="primary-btn" id="save-btn">${editing ? "Guardar cambios" : "Crear rutina"}</button>`);
     scroll.appendChild(saveBtn);
 
@@ -579,7 +1032,7 @@
         if (confirm(`¿Eliminar la rutina "${existing.name}"?`)) {
           routines = routines.filter((x) => x.id !== id);
           persist();
-          navigate("#/routines");
+          navigate(existing.folderId ? `#/folders/${existing.folderId}` : "#/routines");
         }
       });
     }
@@ -587,7 +1040,8 @@
     screen.appendChild(scroll);
 
     function updateSaveState() {
-      saveBtn.disabled = !(state.name.trim().length > 0 && state.days.length > 0);
+      const folderOk = editing || lockedFolder || state.usesDefaultFolder || !!state.folderId;
+      saveBtn.disabled = !(state.name.trim().length > 0 && state.days.length > 0 && folderOk);
     }
 
     scroll.querySelector("#routine-name").addEventListener("input", (e) => {
@@ -625,8 +1079,11 @@
         persist();
         navigate(`#/routine/${id}`);
       } else {
+        const folderId = lockedFolder ? lockedFolder.id : state.usesDefaultFolder ? ensureDefaultFolder().id : state.folderId;
+        if (!folderId) return;
         const newRoutine = {
           id: uid(),
+          folderId,
           name,
           days: orderedDays,
           activeDay: orderedDays.includes(todayKey()) ? todayKey() : orderedDays[0],
@@ -659,7 +1116,7 @@
       topbar({
         title: "",
         showBack: true,
-        onBack: () => navigate("#/routines"),
+        onBack: () => navigate(routine.folderId ? `#/folders/${routine.folderId}` : "#/routines"),
         right: `<button class="icon-btn" id="btn-edit">${icon("pencil")}</button>`,
       })
     );

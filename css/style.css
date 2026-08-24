@@ -145,6 +145,23 @@ svg { display: block; flex-shrink: 0; }
 .icon-btn svg { width: 18px; height: 18px; stroke: var(--text); }
 .icon-btn.danger svg { stroke: var(--danger); }
 
+.pill-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 20px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.pill-btn svg { width: 16px; height: 16px; stroke: var(--text-dim); }
+
 .spacer { flex: 1; }
 
 .scroll {
@@ -423,6 +440,58 @@ svg { display: block; flex-shrink: 0; }
   color: #1a0e08;
 }
 
+.folder-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.folder-opt {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+}
+
+.folder-opt.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.folder-new-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.folder-new-toggle svg { width: 16px; height: 16px; stroke: var(--text-dim); }
+
+.folder-new-form {
+  display: flex;
+  gap: 8px;
+}
+.folder-new-form input[type="text"] {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  font-size: 15px;
+  outline: none;
+}
+.folder-new-form input[type="text"]:focus { border-color: var(--accent); }
+.folder-new-form .run-btn { padding: 12px 18px; border-radius: 12px; }
+
 .primary-btn {
   width: 100%;
   padding: 18px;
@@ -444,6 +513,24 @@ svg { display: block; flex-shrink: 0; }
   font-weight: 600;
   color: var(--danger);
 }
+
+.secondary-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  margin-top: 12px;
+  border-radius: var(--radius-md);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+}
+.secondary-btn svg { width: 17px; height: 17px; stroke: var(--text-dim); }
 
 /* ---------- Detalle de rutina ---------- */
 
@@ -857,20 +944,43 @@ svg { display: block; flex-shrink: 0; }
 .hidden { display: none !important; }
 
 /* ---------- Bloqueo de orientación ----------
-   iOS Safari no soporta la Screen Orientation Lock API (y el
-   "orientation":"portrait" del manifest no siempre se respeta), así
-   que en vez de intentar compensar la rotación con CSS (poco fiable:
-   según hacia qué lado gira el móvil el signo cambia y se ve del
-   revés), directamente "congelamos" el tamaño de <html> a sus
-   dimensiones iniciales en vertical mediante JS (ver lockPortraitViewport
-   en app.js). Así, si el móvil gira, la pantalla no reacciona y se
-   queda tal cual estaba — igual que con el bloqueo de orientación del
-   propio dispositivo activado.
-   El transform (aunque no rote nada) convierte a <html> en el
-   contenedor de los elementos position:fixed de dentro (como #app),
-   para que también se queden anclados a ese tamaño congelado y no al
-   viewport real. */
-html {
-  transform: translateZ(0);
-  overflow: hidden;
+   iOS Safari no soporta la Screen Orientation Lock API, y ni compensar la
+   rotación con CSS (el signo cambia según hacia qué lado gira el móvil,
+   se veía del revés) ni "congelar" el tamaño de <html> por JS (se
+   descuadraba) funcionan de fiar en un dispositivo real. En vez de eso,
+   directamente no se intenta tocar ni adaptar nada: cuando el CSS detecta
+   horizontal, se tapa toda la pantalla con un aviso fijo pidiendo volver
+   a vertical — la app de debajo quedará tal cual estaba, congelada, sin
+   reaccionar ni recalcular nada, hasta que se vuelva a girar el móvil. */
+#rotate-lock {
+  display: none;
+}
+
+@media screen and (orientation: landscape) {
+  #rotate-lock {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 24px;
+    text-align: center;
+    background: var(--bg);
+    color: var(--text);
+  }
+  #rotate-lock svg {
+    width: 52px;
+    height: 52px;
+    stroke: var(--accent);
+  }
+  #rotate-lock p {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.5;
+    max-width: 260px;
+  }
 }
