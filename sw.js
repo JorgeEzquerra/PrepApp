@@ -1,6 +1,6 @@
 /* Service worker de PrepApp — caché de la app shell para uso offline. */
 
-const CACHE_NAME = "prepapp-cache-v1";
+const CACHE_NAME = "prepapp-cache-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -27,23 +27,24 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Cache-first para el app shell, con actualización en segundo plano.
+// Red primero, caché solo como respaldo sin conexión. Con "cache-first"
+// (como estaba antes) una actualización publicada podía tardar una
+// recarga extra en notarse, porque siempre se servía primero lo que ya
+// hubiera en caché. "cache: no-store" fuerza además a que esa petición de
+// red ignore la caché HTTP normal del navegador (que si no, podría devolver
+// igualmente una respuesta antigua sin ni pasar por el service worker).
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request)
-        .then((response) => {
-          if (response && response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
-
-      return cached || fetchPromise;
-    })
+    fetch(event.request, { cache: "no-store" })
+      .then((response) => {
+        if (response && response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
