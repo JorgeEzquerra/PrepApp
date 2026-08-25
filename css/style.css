@@ -43,12 +43,10 @@
 
 html, body {
   height: 100%;
-  overflow: hidden;
   overscroll-behavior-y: none;
 }
 
 body {
-  position: relative;
   margin: 0;
   background: var(--bg);
   color: var(--text);
@@ -58,12 +56,8 @@ body {
   overflow: hidden;
 }
 
-/* position:absolute (no :fixed) a propósito: su tamaño y posición
-   dependen del <body> de arriba (que JS congela a un tamaño fijo en
-   vertical, ver lockOrientation en app.js), no del viewport real. Así,
-   si el móvil gira, nada de esto se entera ni recalcula nada. */
 #app {
-  position: absolute;
+  position: fixed;
   inset: 0;
   overflow: hidden;
 }

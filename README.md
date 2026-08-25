@@ -118,11 +118,9 @@ carpeta o conectar el repo es suficiente, no hace falta build command.)
 - Los tamaños de icono cubren los requisitos de iOS
   (`apple-touch-icon`) y del `manifest.webmanifest` estándar
   (192/512, incluida una versión *maskable*).
-- La app está pensada solo para uso en vertical: como iOS Safari no
-  permite bloquear la orientación desde una web, al girar el móvil a
-  horizontal se tapa toda la pantalla con un aviso pidiendo volver a
-  vertical (la app de debajo se queda congelada tal cual, sin
-  reaccionar ni recalcular nada).
+- La app está pensada para uso en vertical (`"orientation": "portrait"`
+  en el manifest), aunque iOS Safari no permite forzar ese bloqueo
+  desde una web instalada.
 https://JorgeEzquerra.github.io/PrepApp/ jj new
 jj new
 
