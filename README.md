@@ -20,26 +20,24 @@ icons/                   iconos de la app (192, 512, maskable, apple-touch-icon)
 
 ## Pantallas
 
-1. **Inicio** — nombre "PrepApp" y dos botones: *Ver rutinas* (👁) y
-   *Crear rutina* (+).
-2. **Rutinas** — lista plana de todas las rutinas de todas las
-   carpetas, en el orden en que se crearon (o se reordenaron
-   arrastrándolas por su asa ☰); flecha atrás arriba a la izquierda;
-   botón `+` para crear una nueva y botón *Carpetas* para organizarlas.
-   Cada rutina se elimina arrastrándola hacia la izquierda (pide
-   confirmación) y pasa a la **papelera** (botón 🗑 abajo a la
+1. **Inicio** — nombre "PrepApp" y dos botones: *Ver rutinas* (👁,
+   lleva a Carpetas) y *Crear rutina* (+).
+2. **Carpetas** — agrupan rutinas (por ejemplo, "Alta intensidad" con
+   varias semanas dentro); es el único camino para llegar a cualquier
+   rutina, no hay un listado plano con todas juntas. Se crean,
+   renombran, duplican (con todas sus rutinas y ejercicios, como copia
+   independiente) y eliminan —con su propia papelera de 7 días—. Las
+   rutinas creadas antes de que existieran las carpetas se agrupan
+   solas en una "Carpeta 1" la primera vez que se abre esta versión,
+   para que no se pierda nada.
+3. **Rutinas de una carpeta** — al tocar una carpeta, sus rutinas de
+   arriba a abajo (o reordenadas arrastrándolas por su asa ☰), con su
+   nombre como título; flecha atrás vuelve a Inicio, botón `+` añade
+   una rutina directamente a esa carpeta y botón *Carpetas* para saltar
+   a otra. Cada rutina se elimina arrastrándola hacia la izquierda
+   (pide confirmación) y pasa a la **papelera** (botón 🗑 abajo a la
    derecha), donde se conserva 7 días —con opción de *Recuperar* o
    *Eliminar por completo*— antes de borrarse sola.
-3. **Carpetas** — agrupan rutinas (por ejemplo, "Alta intensidad" con
-   varias semanas dentro). Se crean, renombran, duplican (con todas
-   sus rutinas y ejercicios, como copia independiente) y eliminan
-   —con su propia papelera de 7 días, igual que la de rutinas—.
-   Tocar una carpeta lleva a sus rutinas (mismo listado de siempre,
-   pero solo las suyas, con su nombre como título); el `+` de ahí
-   añade rutinas directamente a esa carpeta. Las rutinas creadas
-   antes de que existieran las carpetas se agrupan solas en una
-   "Carpeta 1" la primera vez que se abre esta versión, para que no
-   se pierda nada.
 4. **Nueva/editar rutina** — nombre, selector de días de la semana
    (L M X J V S D) y, si no se creó ya dentro de una carpeta concreta,
    selector de en qué carpeta guardarla (con opción de crear una

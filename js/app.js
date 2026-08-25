@@ -257,7 +257,6 @@
     const parts = h.split("/").filter(Boolean);
     // [] -> home
     if (parts.length === 0) return { name: "home" };
-    if (parts[0] === "routines") return { name: "routines" };
     if (parts[0] === "trash") return { name: "trash" };
     if (parts[0] === "routine" && parts[1] === "new") return { name: "routine-form", presetFolderId: parts[2] || null };
     if (parts[0] === "routine" && parts[2] === "edit") return { name: "routine-form", id: parts[1] };
@@ -284,9 +283,6 @@
     switch (route.name) {
       case "home":
         app.appendChild(screenHome());
-        break;
-      case "routines":
-        app.appendChild(screenRoutinesList(null));
         break;
       case "trash":
         app.appendChild(screenTrash());
@@ -496,25 +492,26 @@
       </div>
     </div>`);
 
-    screen.querySelector("#btn-ver").addEventListener("click", () => navigate("#/routines"));
+    screen.querySelector("#btn-ver").addEventListener("click", () => navigate("#/folders"));
     screen.querySelector("#btn-crear").addEventListener("click", () => navigate("#/routine/new"));
     return screen;
   }
 
-  /* ---------------- Pantalla: Lista de rutinas ---------------- */
+  /* ---------------- Pantalla: Rutinas de una carpeta ---------------- */
 
-  // folderId === null -> listado plano de siempre (todas las rutinas).
-  // folderId === "<id>" -> solo las rutinas de esa carpeta.
+  // Ya no existe un listado plano con todas las rutinas de todas las
+  // carpetas juntas: a cualquier rutina solo se llega entrando primero
+  // en su carpeta.
   function screenRoutinesList(folderId) {
     const folder = folderId ? getFolder(folderId) : null;
-    if (folderId && !folder) {
+    if (!folder) {
       navigate("#/folders");
       return h(`<div class="screen"></div>`);
     }
     const screen = h(`<div class="screen"></div>`);
     screen.appendChild(
       topbar({
-        title: folder ? folder.name : "Rutinas",
+        title: folder.name,
         showBack: true,
         onBack: () => navigate("#/"),
         right: `
@@ -525,13 +522,13 @@
     );
 
     const scroll = h(`<div class="scroll"></div>`);
-    const activeRoutines = routines.filter((r) => isRoutineVisible(r) && (!folder || r.folderId === folder.id));
+    const activeRoutines = routines.filter((r) => isRoutineVisible(r) && r.folderId === folder.id);
 
     if (activeRoutines.length === 0) {
       scroll.appendChild(
         h(`<div class="empty-state">
           ${icon("clipboard")}
-          <p>${folder ? "Esta carpeta no tiene rutinas todavía." : "Todavía no tienes rutinas."}<br>Crea la primera para empezar.</p>
+          <p>Esta carpeta no tiene rutinas todavía.<br>Crea la primera para empezar.</p>
         </div>`)
       );
     } else {
@@ -572,9 +569,8 @@
       });
       scroll.appendChild(list);
       attachDragReorder(list, activeRoutines, () => {
-        // Válido tanto para el listado plano como para uno filtrado por
-        // carpeta: lo de fuera de este listado (otras carpetas, papelera)
-        // se queda intacto; solo se reordena el subconjunto mostrado.
+        // Lo de fuera de esta carpeta (otras carpetas, papelera) se queda
+        // intacto; solo se reordena el subconjunto mostrado.
         const shownIds = new Set(activeRoutines.map((r) => r.id));
         routines = [...routines.filter((r) => !shownIds.has(r.id)), ...activeRoutines];
         persist();
@@ -585,8 +581,7 @@
     screen.appendChild(
       h(`<button class="fab" id="btn-trash" aria-label="Papelera">${icon("trash")}</button>`)
     );
-    const addTarget = folder ? `#/routine/new/${folder.id}` : "#/routine/new";
-    screen.querySelector("#btn-add").addEventListener("click", () => navigate(addTarget));
+    screen.querySelector("#btn-add").addEventListener("click", () => navigate(`#/routine/new/${folder.id}`));
     screen.querySelector("#btn-trash").addEventListener("click", () => navigate("#/trash"));
     screen.querySelector("#btn-folders").addEventListener("click", () => navigate("#/folders"));
     return screen;
@@ -602,7 +597,7 @@
       topbar({
         title: "Papelera",
         showBack: true,
-        onBack: () => navigate("#/routines"),
+        onBack: () => navigate("#/folders"),
       })
     );
 
@@ -1029,7 +1024,7 @@
         if (confirm(`¿Eliminar la rutina "${existing.name}"?`)) {
           routines = routines.filter((x) => x.id !== id);
           persist();
-          navigate(existing.folderId ? `#/folders/${existing.folderId}` : "#/routines");
+          navigate(existing.folderId ? `#/folders/${existing.folderId}` : "#/folders");
         }
       });
     }
@@ -1100,7 +1095,7 @@
   function screenRoutineDetail(id) {
     const routine = getRoutine(id);
     if (!routine) {
-      navigate("#/routines");
+      navigate("#/folders");
       return h(`<div class="screen"></div>`);
     }
 
@@ -1113,7 +1108,7 @@
       topbar({
         title: "",
         showBack: true,
-        onBack: () => navigate(routine.folderId ? `#/folders/${routine.folderId}` : "#/routines"),
+        onBack: () => navigate(routine.folderId ? `#/folders/${routine.folderId}` : "#/folders"),
         right: `<button class="icon-btn" id="btn-edit">${icon("pencil")}</button>`,
       })
     );
@@ -1286,7 +1281,7 @@
     const routine = getRoutine(id);
     const phaseDef = PHASES.find((p) => p.key === phaseKey);
     if (!routine || !phaseDef) {
-      navigate(id ? `#/routine/${id}` : "#/routines");
+      navigate(id ? `#/routine/${id}` : "#/folders");
       return h(`<div class="screen"></div>`);
     }
 
