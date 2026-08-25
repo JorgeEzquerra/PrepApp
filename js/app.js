@@ -88,7 +88,6 @@
   /* ---------------- Almacenamiento: carpetas ---------------- */
 
   const FOLDERS_KEY = "prepapp_folders_v1";
-  const FOLDER_SEQ_KEY = "prepapp_folder_seq_v1";
 
   function loadFolders() {
     try {
@@ -105,6 +104,11 @@
   }
 
   let folders = loadFolders();
+
+  // Última carpeta cuyas rutinas se han visto (para que "Ver rutinas"
+  // desde Inicio vuelva ahí directo). Vive solo en memoria a propósito:
+  // se olvida al cerrar/reabrir la app.
+  let lastFolderId = null;
 
   function persistFolders() {
     saveFolders(folders);
@@ -123,15 +127,22 @@
     return folders.find((f) => f.id === id);
   }
 
-  // Sugerencia de nombre para la próxima carpeta ("Carpeta N"), sin
-  // consumir aún el contador (solo se consume al crearla de verdad).
-  function peekNextFolderNumber() {
-    return parseInt(localStorage.getItem(FOLDER_SEQ_KEY) || "0", 10) + 1;
-  }
-
-  function bumpFolderSeq() {
-    const n = peekNextFolderNumber();
-    localStorage.setItem(FOLDER_SEQ_KEY, String(n));
+  // Sugerencia de nombre para la próxima carpeta ("Carpeta N"): siempre
+  // el hueco más bajo que no esté usando ya ninguna carpeta activa. No es
+  // un contador que solo sube — si se elimina "Carpeta 2" y no hay una
+  // "Carpeta 3", la siguiente carpeta vuelve a sugerir "Carpeta 2".
+  function nextFolderNumber() {
+    const used = new Set(
+      folders
+        .filter((f) => !f.deletedAt)
+        .map((f) => {
+          const m = /^Carpeta (\d+)$/.exec(f.name);
+          return m ? parseInt(m[1], 10) : null;
+        })
+        .filter((n) => n !== null)
+    );
+    let n = 1;
+    while (used.has(n)) n++;
     return n;
   }
 
@@ -139,13 +150,10 @@
   // también sirve de destino automático para quien crea su primerísima
   // rutina y todavía no tiene ninguna carpeta.
   function ensureDefaultFolder() {
-    let f = folders.find((x) => x.name === "Carpeta 1");
+    let f = folders.find((x) => x.name === "Carpeta 1" && !x.deletedAt);
     if (!f) {
       f = { id: uid(), name: "Carpeta 1" };
       folders.push(f);
-      if (parseInt(localStorage.getItem(FOLDER_SEQ_KEY) || "0", 10) < 1) {
-        localStorage.setItem(FOLDER_SEQ_KEY, "1");
-      }
       persistFolders();
     }
     return f;
@@ -271,8 +279,42 @@
     return { name: "home" };
   }
 
+  // Bloqueo de orientación: iOS Safari no deja bloquearla de verdad desde
+  // una web. En vez de compensar el giro con CSS (se veía del revés según
+  // hacia qué lado se giraba) o taparlo con un aviso, directamente no se
+  // hace nada: se "congela" el tamaño de <body> tal cual está en el
+  // primer render (en vertical) y no se vuelve a tocar. Si el móvil gira,
+  // la página no se entera de nada — ni se redimensiona, ni gira, ni
+  // aparece nada — se queda exactamente igual hasta que se vuelva a
+  // poner en vertical.
+  function lockOrientation() {
+    const w = Math.min(window.innerWidth, window.innerHeight);
+    const h = Math.max(window.innerWidth, window.innerHeight);
+    document.body.style.width = `${w}px`;
+    document.body.style.height = `${h}px`;
+
+    // Los env(safe-area-inset-*) son valores vivos: aunque el tamaño se
+    // congele, seguirían recalculándose solos con el móvil ya girado y
+    // descuadrando los márgenes. Se miden una vez con un elemento de
+    // prueba y se fijan como variables CSS normales (ya no como env()).
+    const probe = document.createElement("div");
+    probe.style.cssText =
+      "position:fixed;inset:0;visibility:hidden;pointer-events:none;" +
+      "padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);" +
+      "padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);";
+    document.body.appendChild(probe);
+    const cs = getComputedStyle(probe);
+    const root = document.documentElement.style;
+    root.setProperty("--safe-top", cs.paddingTop);
+    root.setProperty("--safe-bottom", cs.paddingBottom);
+    root.setProperty("--safe-left", cs.paddingLeft);
+    root.setProperty("--safe-right", cs.paddingRight);
+    probe.remove();
+  }
+
   window.addEventListener("hashchange", render);
   window.addEventListener("DOMContentLoaded", () => {
+    lockOrientation();
     render();
     registerServiceWorker();
   });
@@ -496,7 +538,12 @@
       </div>
     </div>`);
 
-    screen.querySelector("#btn-ver").addEventListener("click", () => navigate("#/routines"));
+    screen.querySelector("#btn-ver").addEventListener("click", () => {
+      // Si la última carpeta que se visitó sigue existiendo, "Ver rutinas"
+      // vuelve directo ahí; si no, al listado plano de siempre.
+      const folder = lastFolderId ? getFolder(lastFolderId) : null;
+      navigate(folder && !folder.deletedAt ? `#/folders/${folder.id}` : "#/routines");
+    });
     screen.querySelector("#btn-crear").addEventListener("click", () => navigate("#/routine/new"));
     return screen;
   }
@@ -511,6 +558,11 @@
       navigate("#/folders");
       return h(`<div class="screen"></div>`);
     }
+    // Solo se actualiza al entrar en una carpeta concreta; ver el listado
+    // plano no borra el recuerdo (si no, pasar por él de camino a Inicio
+    // al volver con "atrás" lo borraría siempre y la función no serviría
+    // de nada).
+    if (folder) lastFolderId = folder.id;
 
     const screen = h(`<div class="screen"></div>`);
     screen.appendChild(
@@ -519,7 +571,7 @@
         showBack: true,
         onBack: () => navigate(folder ? "#/folders" : "#/"),
         right: `
-          ${folder ? "" : `<button class="pill-btn" id="btn-folders">${icon("folder")} Carpetas</button>`}
+          <button class="pill-btn" id="btn-folders">${icon("folder")} Carpetas</button>
           <button class="icon-btn" id="btn-add">${icon("plus")}</button>
         `,
       })
@@ -589,9 +641,7 @@
     const addTarget = folder ? `#/routine/new/${folder.id}` : "#/routine/new";
     screen.querySelector("#btn-add").addEventListener("click", () => navigate(addTarget));
     screen.querySelector("#btn-trash").addEventListener("click", () => navigate("#/trash"));
-    if (!folder) {
-      screen.querySelector("#btn-folders").addEventListener("click", () => navigate("#/folders"));
-    }
+    screen.querySelector("#btn-folders").addEventListener("click", () => navigate("#/folders"));
     return screen;
   }
 
@@ -746,7 +796,7 @@
       return h(`<div class="screen"></div>`);
     }
 
-    const state = { name: existing ? existing.name : `Carpeta ${peekNextFolderNumber()}` };
+    const state = { name: existing ? existing.name : `Carpeta ${nextFolderNumber()}` };
 
     const screen = h(`<div class="screen"></div>`);
     screen.appendChild(
@@ -807,7 +857,6 @@
         persistFolders();
         navigate("#/folders");
       } else {
-        bumpFolderSeq();
         const created = { id: uid(), name };
         folders.push(created);
         persistFolders();
@@ -1001,13 +1050,12 @@
         newToggle.addEventListener("click", () => {
           newToggle.classList.add("hidden");
           newForm.classList.remove("hidden");
-          newNameInput.value = `Carpeta ${peekNextFolderNumber()}`;
+          newNameInput.value = `Carpeta ${nextFolderNumber()}`;
           newNameInput.focus();
           newNameInput.select();
         });
         folderPickerEl.querySelector("#folder-new-confirm").addEventListener("click", () => {
-          const name = newNameInput.value.trim() || `Carpeta ${peekNextFolderNumber()}`;
-          bumpFolderSeq();
+          const name = newNameInput.value.trim() || `Carpeta ${nextFolderNumber()}`;
           const created = { id: uid(), name };
           folders.push(created);
           persistFolders();

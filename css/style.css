@@ -43,10 +43,12 @@
 
 html, body {
   height: 100%;
+  overflow: hidden;
   overscroll-behavior-y: none;
 }
 
 body {
+  position: relative;
   margin: 0;
   background: var(--bg);
   color: var(--text);
@@ -56,8 +58,12 @@ body {
   overflow: hidden;
 }
 
+/* position:absolute (no :fixed) a propósito: su tamaño y posición
+   dependen del <body> de arriba (que JS congela a un tamaño fijo en
+   vertical, ver lockOrientation en app.js), no del viewport real. Así,
+   si el móvil gira, nada de esto se entera ni recalcula nada. */
 #app {
-  position: fixed;
+  position: absolute;
   inset: 0;
   overflow: hidden;
 }
@@ -943,44 +949,3 @@ svg { display: block; flex-shrink: 0; }
 /* Utilidades */
 .hidden { display: none !important; }
 
-/* ---------- Bloqueo de orientación ----------
-   iOS Safari no soporta la Screen Orientation Lock API, y ni compensar la
-   rotación con CSS (el signo cambia según hacia qué lado gira el móvil,
-   se veía del revés) ni "congelar" el tamaño de <html> por JS (se
-   descuadraba) funcionan de fiar en un dispositivo real. En vez de eso,
-   directamente no se intenta tocar ni adaptar nada: cuando el CSS detecta
-   horizontal, se tapa toda la pantalla con un aviso fijo pidiendo volver
-   a vertical — la app de debajo quedará tal cual estaba, congelada, sin
-   reaccionar ni recalcular nada, hasta que se vuelva a girar el móvil. */
-#rotate-lock {
-  display: none;
-}
-
-@media screen and (orientation: landscape) {
-  #rotate-lock {
-    display: flex;
-    position: fixed;
-    inset: 0;
-    z-index: 999;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 18px;
-    padding: 24px;
-    text-align: center;
-    background: var(--bg);
-    color: var(--text);
-  }
-  #rotate-lock svg {
-    width: 52px;
-    height: 52px;
-    stroke: var(--accent);
-  }
-  #rotate-lock p {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 1.5;
-    max-width: 260px;
-  }
-}
