@@ -516,7 +516,7 @@
       topbar({
         title: folder ? folder.name : "Rutinas",
         showBack: true,
-        onBack: () => navigate(folder ? "#/folders" : "#/"),
+        onBack: () => navigate("#/"),
         right: `
           <button class="pill-btn" id="btn-folders">${icon("folder")} Carpetas</button>
           <button class="icon-btn" id="btn-add">${icon("plus")}</button>
@@ -684,7 +684,7 @@
       topbar({
         title: "Carpetas",
         showBack: true,
-        onBack: () => navigate("#/routines"),
+        onBack: () => navigate("#/"),
         right: `<button class="icon-btn" id="btn-add">${icon("plus")}</button>`,
       })
     );
