@@ -106,6 +106,12 @@
 
   let folders = loadFolders();
 
+  // Última carpeta en la que estuvo el usuario (para que "Ver rutinas"
+  // desde Inicio vuelva ahí directo). Vive solo en memoria a propósito:
+  // se olvida al pasar por el listado de Carpetas sin entrar en ninguna
+  // concreta, y también al cerrar/reabrir la app.
+  let lastFolderId = null;
+
   function persistFolders() {
     saveFolders(folders);
   }
@@ -492,7 +498,12 @@
       </div>
     </div>`);
 
-    screen.querySelector("#btn-ver").addEventListener("click", () => navigate("#/folders"));
+    screen.querySelector("#btn-ver").addEventListener("click", () => {
+      // Si la última carpeta en la que estuvo el usuario sigue existiendo,
+      // "Ver rutinas" vuelve directo ahí; si no, al listado de Carpetas.
+      const folder = lastFolderId ? getFolder(lastFolderId) : null;
+      navigate(folder && !folder.deletedAt ? `#/folders/${folder.id}` : "#/folders");
+    });
     screen.querySelector("#btn-crear").addEventListener("click", () => navigate("#/routine/new"));
     return screen;
   }
@@ -508,6 +519,8 @@
       navigate("#/folders");
       return h(`<div class="screen"></div>`);
     }
+    lastFolderId = folder.id;
+
     const screen = h(`<div class="screen"></div>`);
     screen.appendChild(
       topbar({
@@ -674,6 +687,7 @@
   /* ---------------- Pantalla: Carpetas ---------------- */
 
   function screenFoldersList() {
+    lastFolderId = null; // se está viendo el listado sin entrar en ninguna
     const screen = h(`<div class="screen"></div>`);
     screen.appendChild(
       topbar({

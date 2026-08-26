@@ -153,7 +153,7 @@ svg { display: block; flex-shrink: 0; }
   padding: 0 14px;
   border-radius: 20px;
   background: var(--card);
-  border: 1px solid var(--card-border);
+  border: 1.5px solid #facc15;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--text);
