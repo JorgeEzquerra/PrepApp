@@ -1356,7 +1356,7 @@
           </div>
         </div>`);
 
-        // Eliminar requiere mantener pulsada la papelera 2 s (evita borrados accidentales).
+        // Eliminar requiere mantener pulsada la papelera 1,2 s (evita borrados accidentales).
         const removeBtn = row.querySelector(".remove-btn");
         let holdTimer = null;
         function clearHold() {
@@ -1369,12 +1369,12 @@
         removeBtn.addEventListener("pointerdown", (e) => {
           e.preventDefault();
           clearHold();
-          removeBtn.classList.add("holding"); // dispara el anillo rojo que se va completando en 2 s
+          removeBtn.classList.add("holding"); // dispara el anillo rojo que se va completando en 1,2 s
           holdTimer = setTimeout(() => {
             holdTimer = null;
             removeBtn.classList.remove("holding");
             row.classList.add("confirming");
-          }, 2000);
+          }, 1200);
         });
         ["pointerup", "pointerleave", "pointercancel"].forEach((evt) =>
           removeBtn.addEventListener(evt, clearHold)

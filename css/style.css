@@ -46,6 +46,14 @@ html, body {
   overscroll-behavior-y: none;
 }
 
+/* Sin esto, al girar el móvil a horizontal Safari agranda el texto solo
+   (para que se lea más cómodo en una pantalla más ancha) y, al volver a
+   vertical, se queda agrandado en vez de recuperar su tamaño normal. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -74,6 +82,12 @@ button {
   background: none;
   cursor: pointer;
   touch-action: manipulation;
+  /* Son botones, no texto: al mantenerlos pulsados (para el menú de
+     fase o la confirmación de borrar) no debe aparecer ni el cursor de
+     selección ni el menú de "Copiar" de iOS. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 button:active {
@@ -698,7 +712,7 @@ svg { display: block; flex-shrink: 0; }
 .remove-btn svg { width: 16px; height: 16px; stroke: var(--text-faint); }
 
 /* Anillo rojo que se va completando mientras se mantiene pulsada la
-   papelera, durante los 2 s que hacen falta para poder confirmar el
+   papelera, durante los 1,2 s que hacen falta para poder confirmar el
    borrado. Si se suelta antes, se vacía de nuevo. */
 .remove-btn .hold-ring {
   position: absolute;
@@ -720,10 +734,10 @@ svg { display: block; flex-shrink: 0; }
 }
 .remove-btn.holding .hold-ring circle {
   stroke-dashoffset: 0;
-  transition: stroke-dashoffset 2s linear;
+  transition: stroke-dashoffset 1.2s linear;
 }
 
-/* Confirmación de borrado (aparece tras mantener pulsada la papelera 2 s) */
+/* Confirmación de borrado (aparece tras mantener pulsada la papelera 1,2 s) */
 
 .row-confirm {
   display: none;
