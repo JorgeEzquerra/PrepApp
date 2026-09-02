@@ -1130,6 +1130,51 @@
 
     screen.appendChild(h(`<div class="routine-title"><h1>${esc(routine.name)}</h1></div>`));
 
+    // Título opcional por día (p. ej. "Pecho y tríceps"), para distinguir de
+    // un vistazo en qué día de la rutina estás además del nombre del día.
+    const activeDayName = DAYS.find((d) => d.key === routine.activeDay).name;
+    const dayTitle = (routine.dayTitles && routine.dayTitles[routine.activeDay]) || "";
+    const dayTitleBox = h(`<div class="day-title-box">
+      <div class="day-title-view">
+        <div class="day-title-label">${esc(activeDayName.toUpperCase())}</div>
+        <div class="day-title-text ${dayTitle ? "" : "placeholder"}">${dayTitle ? esc(dayTitle) : "Toca para añadir un título"}</div>
+      </div>
+      <div class="day-title-edit">
+        <input type="text" class="day-title-input" maxlength="40" placeholder="Ej. Pecho y tríceps" autocomplete="off" value="${esc(dayTitle)}" />
+        <div class="confirm-actions">
+          <button class="cancel-btn">Cancelar</button>
+          <button class="run-btn">Guardar</button>
+        </div>
+      </div>
+    </div>`);
+
+    const dayTitleInput = dayTitleBox.querySelector(".day-title-input");
+
+    dayTitleBox.querySelector(".day-title-text").addEventListener("click", () => {
+      dayTitleInput.value = dayTitle;
+      dayTitleBox.classList.add("editing");
+    });
+    dayTitleBox.querySelector(".day-title-edit .cancel-btn").addEventListener("click", () => {
+      dayTitleBox.classList.remove("editing");
+    });
+    function saveDayTitle() {
+      const value = dayTitleInput.value.trim();
+      if (!routine.dayTitles) routine.dayTitles = {};
+      if (value) {
+        routine.dayTitles[routine.activeDay] = value;
+      } else {
+        delete routine.dayTitles[routine.activeDay];
+      }
+      persist();
+      render();
+    }
+    dayTitleBox.querySelector(".day-title-edit .run-btn").addEventListener("click", saveDayTitle);
+    dayTitleInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); saveDayTitle(); }
+    });
+
+    screen.appendChild(dayTitleBox);
+
     const stack = h(`<div class="phase-stack"></div>`);
     PHASES.forEach((ph) => {
       const count = (routine.phases[ph.key] && routine.phases[ph.key][routine.activeDay] || []).length;

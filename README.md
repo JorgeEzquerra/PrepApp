@@ -42,10 +42,13 @@ icons/                   iconos de la app (192, 512, maskable, apple-touch-icon)
    (L M X J V S D) y, si no se creó ya dentro de una carpeta concreta,
    selector de en qué carpeta guardarla (con opción de crear una
    carpeta nueva ahí mismo).
-5. **Detalle de rutina** — título con el nombre de la rutina, tres
-   botones (Calentamiento / Entrenamiento / Enfriamiento) y, al fondo,
-   los días elegidos como *toggle*: el día activo determina qué
-   contenido edita cada uno de los tres botones.
+5. **Detalle de rutina** — título con el nombre de la rutina; debajo,
+   el nombre del día activo (LUNES, MARTES…) con un título opcional
+   para ese día en concreto (p. ej. "Pecho y tríceps"), tocable para
+   editarlo; tres botones (Calentamiento / Entrenamiento /
+   Enfriamiento) y, al fondo, los días elegidos como *toggle*: el día
+   activo determina qué contenido edita cada uno de los tres botones,
+   y también de qué día es el título que se ve arriba.
 6. **Editor de fase** — lista de ejercicios de esa fase para el día
    activo. Cada ejercicio se puede reordenar arrastrándolo por su asa
    (☰), se edita tocando su nombre (para no tener que borrarlo y
