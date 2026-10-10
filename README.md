@@ -53,12 +53,25 @@ icons/                   iconos de la app (192, 512, maskable, apple-touch-icon)
    activo. Cada ejercicio se puede reordenar arrastrándolo por su asa
    (☰), se edita tocando su nombre (para no tener que borrarlo y
    volver a escribirlo si te equivocas) y solo se elimina manteniendo
-   pulsada la papelera 2 segundos —con un anillo rojo que se va
+   pulsada la papelera 1,2 segundos —con un anillo rojo que se va
    completando mientras se mantiene pulsada— (pide confirmación, para
    evitar borrados accidentales). Esta pantalla está pensada sobre
    todo para repasar la rutina: el formulario para añadir un ejercicio
    nuevo queda oculto tras un botón "+" pequeño, solo se despliega al
    tocarlo, y se cierra solo si se toca fuera de él.
+
+   Al añadir un ejercicio, el campo de detalle cambia según el modo
+   elegido abajo (*Sets/Reps* · *Crono* · *Otro*, marcado en naranja el
+   activo; por defecto *Otro*, como texto libre de siempre):
+   - **Sets/Reps** — dos números (máx. 2 cifras) junto a las palabras
+     "Series" y "Reps".
+   - **Crono** — tiempo de trabajo y de descanso (en segundos) y
+     número de rondas. Un ejercicio así creado abre un temporizador
+     con una doble pulsación sobre él (una sola pulsación lo sigue
+     editando, como cualquier otro): cuenta atrás con la fase actual
+     (TRABAJO/DESCANSO) y la ronda, campana al cambiar de fase y al
+     terminar, y botón para detenerlo.
+   - **Otro** — el campo de texto libre de siempre.
 
 Además, manteniendo pulsado 1,5 s uno de los tres botones de fase en
 el detalle de la rutina se abre un menú para copiar ese calentamiento

@@ -833,6 +833,7 @@ svg { display: block; flex-shrink: 0; }
 .add-exercise-form {
   flex-shrink: 0;
   display: flex;
+  align-items: flex-end;
   gap: 8px;
   padding: 12px 20px calc(var(--safe-bottom) + 10px);
   border-top: 1px solid var(--card-border);
@@ -858,6 +859,7 @@ svg { display: block; flex-shrink: 0; }
 
 .add-exercise-form .send {
   width: 46px;
+  height: 46px;
   border-radius: 12px;
   background: var(--accent);
   display: flex;
@@ -867,6 +869,147 @@ svg { display: block; flex-shrink: 0; }
 }
 .add-exercise-form .send svg { width: 20px; height: 20px; stroke: #1a0e08; }
 .add-exercise-form .send:disabled { opacity: .35; }
+
+/* Modo del campo de detalle: Sets/Reps, Crono u Otro */
+
+.detail-modes .field-detail,
+.detail-modes .detail-sets,
+.detail-modes .detail-crono {
+  display: none;
+}
+.detail-modes[data-mode="other"] .field-detail { display: block; }
+.detail-modes[data-mode="sets"] .detail-sets { display: flex; }
+.detail-modes[data-mode="crono"] .detail-crono { display: flex; }
+
+.detail-modes .detail-sets {
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+}
+.detail-modes .detail-sets input[type="text"] {
+  width: 38px;
+  flex-shrink: 0;
+  padding: 7px 0;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--card-border);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+}
+.detail-modes .detail-sets input[type="text"]:focus { border-color: var(--accent); }
+.detail-modes .detail-sets span {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.detail-modes .detail-crono { gap: 8px; }
+.detail-modes .detail-crono label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.detail-modes .detail-crono input[type="text"] {
+  width: 100%;
+  padding: 8px 2px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text);
+  outline: none;
+}
+.detail-modes .detail-crono input[type="text"]:focus { border-color: var(--accent); }
+
+.mode-picker {
+  display: flex;
+  gap: 6px;
+}
+.mode-btn {
+  flex: 1;
+  padding: 9px 4px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-align: center;
+}
+.mode-btn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a0e08;
+}
+
+.crono-icon {
+  display: inline-flex;
+  vertical-align: -3px;
+  margin-left: 6px;
+}
+.crono-icon svg { width: 14px; height: 14px; stroke: var(--cooldown); }
+
+/* ---------- Modal del cronómetro ---------- */
+
+.timer-sheet {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: 28px 20px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.timer-exercise-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.timer-phase {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--text-faint);
+}
+.timer-phase.work { color: var(--warmup); }
+.timer-phase.rest { color: var(--cooldown); }
+
+.timer-countdown {
+  font-size: 54px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+  margin: 2px 0 4px;
+}
+
+.timer-round {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+}
+
+.timer-sheet .confirm-actions { width: 100%; }
+.timer-sheet .sheet-cancel { width: 100%; margin-top: 8px; }
 
 .add-toggle-bar {
   flex-shrink: 0;

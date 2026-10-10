@@ -182,6 +182,24 @@
     return !!folder && !folder.deletedAt;
   }
 
+  // Copia un ejercicio con un id nuevo, conservando los campos que le
+  // correspondan según su modo (Sets/Reps, Crono u Otro).
+  function cloneExercise(ex) {
+    const mode = ex.mode || "other";
+    const clone = { id: uid(), name: ex.name, mode };
+    if (mode === "sets") {
+      clone.series = ex.series;
+      clone.reps = ex.reps;
+    } else if (mode === "crono") {
+      clone.work = ex.work;
+      clone.rest = ex.rest;
+      clone.rounds = ex.rounds;
+    } else {
+      clone.detail = ex.detail;
+    }
+    return clone;
+  }
+
   function deepCloneRoutine(routine, folderId) {
     const clone = {
       id: uid(),
@@ -195,11 +213,7 @@
       clone.phases[ph.key] = {};
       const src = (routine.phases && routine.phases[ph.key]) || {};
       Object.keys(src).forEach((dayKey) => {
-        clone.phases[ph.key][dayKey] = (src[dayKey] || []).map((ex) => ({
-          id: uid(),
-          name: ex.name,
-          detail: ex.detail,
-        }));
+        clone.phases[ph.key][dayKey] = (src[dayKey] || []).map(cloneExercise);
       });
     });
     return clone;
@@ -218,6 +232,221 @@
     return newFolder;
   }
 
+  /* ---------------- Ejercicios: Sets/Reps, Crono u Otro ---------------- */
+
+  // Texto que se muestra bajo el nombre del ejercicio en la lista,
+  // según su modo.
+  function exerciseSummary(ex) {
+    const mode = ex.mode || "other";
+    if (mode === "sets") {
+      const parts = [];
+      if (ex.series) parts.push(`${ex.series} series`);
+      if (ex.reps) parts.push(`${ex.reps} reps`);
+      return parts.join(" · ");
+    }
+    if (mode === "crono") {
+      const parts = [];
+      if (ex.work) parts.push(`${ex.work}s trabajo`);
+      if (ex.rest) parts.push(`${ex.rest}s descanso`);
+      if (ex.rounds) parts.push(`×${ex.rounds}`);
+      return parts.join(" · ");
+    }
+    return ex.detail || "";
+  }
+
+  // Los tres bloques (Otro / Sets-Reps / Crono) que sustituyen al campo de
+  // texto libre, según el modo elegido. Se usa tanto al crear un ejercicio
+  // como al editar uno ya existente (con o sin el selector de modo).
+  function detailModesHtml() {
+    return `
+      <div class="detail-modes" data-mode="other">
+        <input type="text" class="field-detail" maxlength="60" autocomplete="off" placeholder="Series x reps, notas… (opcional)" />
+        <div class="detail-sets">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" class="field-series" placeholder="0" />
+          <span>Series</span>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" class="field-reps" placeholder="0" />
+          <span>Reps</span>
+        </div>
+        <div class="detail-crono">
+          <label>Trabajo (s)<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" class="field-work" placeholder="30" /></label>
+          <label>Descanso (s)<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" class="field-rest" placeholder="15" /></label>
+          <label>Rondas<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" class="field-rounds" placeholder="8" /></label>
+        </div>
+      </div>`;
+  }
+
+  function restrictToDigits(input) {
+    input.addEventListener("input", () => {
+      input.value = input.value.replace(/[^0-9]/g, "");
+    });
+  }
+
+  function formatMMSS(totalSeconds) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+
+  // Un único AudioContext compartido, reutilizado para cada campana (crear
+  // uno nuevo cada vez no hace falta y en iOS solo se "desbloquea" con un
+  // gesto real del usuario, que es cuando se llama a esto desde "Iniciar").
+  let sharedAudioCtx = null;
+  function ensureAudioCtx() {
+    try {
+      if (!sharedAudioCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        sharedAudioCtx = new AC();
+      }
+      if (sharedAudioCtx.state === "suspended") sharedAudioCtx.resume();
+      return sharedAudioCtx;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Campana sencilla generada por código (sin archivos de audio): un tono
+  // que entra y se apaga rápido, suficiente para avisar de un cambio de
+  // fase aunque no se esté mirando el móvil.
+  function playBell() {
+    const ctx = ensureAudioCtx();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.35, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 1.2);
+  }
+
+  // Modal del cronómetro de un ejercicio en modo Crono: alterna trabajo y
+  // descanso durante las rondas programadas, con campana en cada cambio.
+  function openCronoTimer(ex) {
+    const work = Math.max(0, parseInt(ex.work, 10) || 0);
+    const rest = Math.max(0, parseInt(ex.rest, 10) || 0);
+    const rounds = Math.max(1, parseInt(ex.rounds, 10) || 1);
+    const hasTime = work > 0 || rest > 0;
+
+    const overlay = h(`<div class="sheet-overlay">
+      <div class="sheet timer-sheet">
+        <div class="timer-exercise-name">${esc(ex.name)}</div>
+        <div class="timer-phase" id="timer-phase">LISTO</div>
+        <div class="timer-countdown" id="timer-countdown">${formatMMSS(work || rest)}</div>
+        <div class="timer-round" id="timer-round">Ronda 1 de ${rounds}</div>
+        <div class="confirm-actions">
+          <button class="run-btn" id="timer-start"${hasTime ? "" : " disabled"}>Iniciar</button>
+          <button class="delete-btn hidden" id="timer-stop">Detener</button>
+        </div>
+        <button class="sheet-cancel" id="timer-close">Cerrar</button>
+      </div>
+    </div>`);
+
+    const phaseEl = overlay.querySelector("#timer-phase");
+    const countdownEl = overlay.querySelector("#timer-countdown");
+    const roundEl = overlay.querySelector("#timer-round");
+    const startBtn = overlay.querySelector("#timer-start");
+    const stopBtn = overlay.querySelector("#timer-stop");
+
+    let intervalId = null;
+    let state = null; // { phase: "work" | "rest", remaining, round }
+
+    function render() {
+      const phase = state ? state.phase : null; // "LISTO" hasta que se pulse Iniciar
+      phaseEl.textContent = phase === "work" ? "TRABAJO" : phase === "rest" ? "DESCANSO" : "LISTO";
+      phaseEl.classList.toggle("work", phase === "work");
+      phaseEl.classList.toggle("rest", phase === "rest");
+      countdownEl.textContent = formatMMSS(state ? state.remaining : work || rest);
+      roundEl.textContent = `Ronda ${state ? state.round : 1} de ${rounds}`;
+    }
+
+    function finish() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      state = null;
+      startBtn.classList.remove("hidden");
+      stopBtn.classList.add("hidden");
+      phaseEl.textContent = "COMPLETADO";
+      phaseEl.classList.remove("work", "rest");
+      countdownEl.textContent = "00:00";
+      roundEl.textContent = `Ronda ${rounds} de ${rounds}`;
+    }
+
+    function advanceRound() {
+      if (state.round >= rounds) {
+        finish();
+        return;
+      }
+      state.round += 1;
+      state.phase = "work";
+      state.remaining = work;
+      render();
+    }
+
+    function nextPhase() {
+      playBell();
+      if (state.phase === "work" && rest > 0) {
+        state.phase = "rest";
+        state.remaining = rest;
+        render();
+        return;
+      }
+      advanceRound();
+    }
+
+    function tick() {
+      state.remaining -= 1;
+      if (state.remaining <= 0) {
+        nextPhase();
+      } else {
+        render();
+      }
+    }
+
+    function start() {
+      if (!hasTime) return;
+      ensureAudioCtx(); // desbloquea el audio con este gesto del usuario
+      state = { phase: work > 0 ? "work" : "rest", remaining: work > 0 ? work : rest, round: 1 };
+      render();
+      intervalId = setInterval(tick, 1000);
+      startBtn.classList.add("hidden");
+      stopBtn.classList.remove("hidden");
+    }
+
+    function stop() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      state = null;
+      startBtn.classList.remove("hidden");
+      stopBtn.classList.add("hidden");
+      render();
+    }
+
+    function close() {
+      stop();
+      overlay.remove();
+    }
+
+    startBtn.addEventListener("click", start);
+    stopBtn.addEventListener("click", stop);
+    overlay.querySelector("#timer-close").addEventListener("click", close);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+
+    render();
+    document.body.appendChild(overlay);
+  }
+
   /* ---------------- Iconos SVG ---------------- */
 
   const ICONS = {
@@ -234,6 +463,7 @@
     grip: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>`,
     folder: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>`,
     copy: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`,
+    timer: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M10 2h4"/></svg>`,
   };
 
   function icon(name) {
@@ -1248,7 +1478,7 @@
     const otherDays = DAYS.filter((d) => routine.days.includes(d.key) && d.key !== day);
 
     function cloneSource() {
-      return sourceExercises.map((ex) => ({ id: uid(), name: ex.name, detail: ex.detail }));
+      return sourceExercises.map(cloneExercise);
     }
 
     function applyTo(targetDay) {
@@ -1370,12 +1600,14 @@
       }
       const list = h(`<div class="exercise-list"></div>`);
       exercises.forEach((ex) => {
+        const mode = ex.mode || "other";
+        const summary = exerciseSummary(ex);
         const row = h(`<div class="exercise-row" data-id="${ex.id}">
           <div class="row-main">
             <button class="grip-btn" aria-label="Reordenar">${icon("grip")}</button>
             <div class="exercise-info" role="button">
-              <div class="name">${esc(ex.name)}</div>
-              ${ex.detail ? `<div class="detail">${esc(ex.detail)}</div>` : ""}
+              <div class="name">${esc(ex.name)}${mode === "crono" ? `<span class="crono-icon">${icon("timer")}</span>` : ""}</div>
+              ${summary ? `<div class="detail">${esc(summary)}</div>` : ""}
             </div>
             <button class="remove-btn" aria-label="Eliminar">
               <svg class="hold-ring" viewBox="0 0 36 36" aria-hidden="true">
@@ -1393,7 +1625,7 @@
           </div>
           <div class="row-edit">
             <input type="text" class="edit-name" maxlength="60" autocomplete="off" />
-            <input type="text" class="edit-detail" maxlength="60" autocomplete="off" placeholder="Series x reps, notas… (opcional)" />
+            ${detailModesHtml()}
             <div class="confirm-actions">
               <button class="cancel-btn">Cancelar</button>
               <button class="run-btn">Guardar</button>
@@ -1435,15 +1667,52 @@
           renderList();
         });
 
-        // Tocar el ejercicio permite editar su texto en lugar de tener que borrarlo.
+        // Tocar el ejercicio permite editar sus datos en lugar de tener que
+        // borrarlo. Los campos que aparecen dependen de su modo (fijo desde
+        // que se creó: Sets/Reps, Crono u Otro).
         const editNameInput = row.querySelector(".edit-name");
-        const editDetailInput = row.querySelector(".edit-detail");
+        const editDetailWrap = row.querySelector(".row-edit .detail-modes");
+        const editDetailInput = editDetailWrap.querySelector(".field-detail");
+        const editSeriesInput = editDetailWrap.querySelector(".field-series");
+        const editRepsInput = editDetailWrap.querySelector(".field-reps");
+        const editWorkInput = editDetailWrap.querySelector(".field-work");
+        const editRestInput = editDetailWrap.querySelector(".field-rest");
+        const editRoundsInput = editDetailWrap.querySelector(".field-rounds");
+        [editSeriesInput, editRepsInput, editWorkInput, editRestInput, editRoundsInput].forEach(restrictToDigits);
 
-        row.querySelector(".exercise-info").addEventListener("click", () => {
+        function openEditMode() {
           editNameInput.value = ex.name;
+          editDetailWrap.dataset.mode = mode;
           editDetailInput.value = ex.detail || "";
+          editSeriesInput.value = ex.series || "";
+          editRepsInput.value = ex.reps || "";
+          editWorkInput.value = ex.work || "";
+          editRestInput.value = ex.rest || "";
+          editRoundsInput.value = ex.rounds || "";
           row.classList.add("editing");
-        });
+        }
+
+        const infoEl = row.querySelector(".exercise-info");
+        if (mode === "crono") {
+          // Un toque edita (como siempre); dos toques seguidos abren el
+          // temporizador. Sin esto, un solo toque bastaría para ambas cosas
+          // y no se podrían distinguir.
+          let pendingTap = null;
+          infoEl.addEventListener("click", () => {
+            if (pendingTap) {
+              clearTimeout(pendingTap);
+              pendingTap = null;
+              openCronoTimer(ex);
+            } else {
+              pendingTap = setTimeout(() => {
+                pendingTap = null;
+                openEditMode();
+              }, 350);
+            }
+          });
+        } else {
+          infoEl.addEventListener("click", openEditMode);
+        }
 
         row.querySelector(".row-edit .cancel-btn").addEventListener("click", () => {
           row.classList.remove("editing");
@@ -1453,13 +1722,26 @@
           const newName = editNameInput.value.trim();
           if (!newName) return;
           ex.name = newName;
-          ex.detail = editDetailInput.value.trim();
+          if (mode === "sets") {
+            ex.series = editSeriesInput.value.trim();
+            ex.reps = editRepsInput.value.trim();
+          } else if (mode === "crono") {
+            ex.work = editWorkInput.value.trim();
+            ex.rest = editRestInput.value.trim();
+            ex.rounds = editRoundsInput.value.trim();
+          } else {
+            ex.detail = editDetailInput.value.trim();
+          }
           persist();
           renderList();
         }
         row.querySelector(".row-edit .run-btn").addEventListener("click", saveEdit);
         editNameInput.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") { e.preventDefault(); editDetailInput.focus(); }
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          if (mode === "sets") editSeriesInput.focus();
+          else if (mode === "crono") editWorkInput.focus();
+          else editDetailInput.focus();
         });
         editDetailInput.addEventListener("keydown", (e) => {
           if (e.key === "Enter") { e.preventDefault(); saveEdit(); }
@@ -1484,14 +1766,34 @@
     const form = h(`<div class="add-exercise-form hidden">
       <div class="inputs">
         <input type="text" id="ex-name" placeholder="Ejercicio (ej. Sentadillas)" maxlength="60" autocomplete="off" />
-        <input type="text" id="ex-detail" placeholder="Series x reps, notas… (opcional)" maxlength="60" autocomplete="off" />
+        ${detailModesHtml()}
+        <div class="mode-picker">
+          <button type="button" class="mode-btn" data-mode="sets">Sets/Reps</button>
+          <button type="button" class="mode-btn" data-mode="crono">Crono</button>
+          <button type="button" class="mode-btn on" data-mode="other">Otro</button>
+        </div>
       </div>
       <button class="send" id="ex-add" disabled>${icon("plus")}</button>
     </div>`);
 
     const nameInput = form.querySelector("#ex-name");
-    const detailInput = form.querySelector("#ex-detail");
+    const detailWrap = form.querySelector(".detail-modes");
+    const detailInput = detailWrap.querySelector(".field-detail");
+    const seriesInput = detailWrap.querySelector(".field-series");
+    const repsInput = detailWrap.querySelector(".field-reps");
+    const workInput = detailWrap.querySelector(".field-work");
+    const restInput = detailWrap.querySelector(".field-rest");
+    const roundsInput = detailWrap.querySelector(".field-rounds");
+    [seriesInput, repsInput, workInput, restInput, roundsInput].forEach(restrictToDigits);
     const addBtn = form.querySelector("#ex-add");
+
+    form.querySelectorAll(".mode-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        form.querySelectorAll(".mode-btn").forEach((b) => b.classList.remove("on"));
+        btn.classList.add("on");
+        detailWrap.dataset.mode = btn.dataset.mode;
+      });
+    });
 
     function updateAddState() {
       addBtn.disabled = nameInput.value.trim().length === 0;
@@ -1503,13 +1805,33 @@
       addBar.classList.remove("hidden");
       nameInput.value = "";
       detailInput.value = "";
+      seriesInput.value = "";
+      repsInput.value = "";
+      workInput.value = "";
+      restInput.value = "";
+      roundsInput.value = "";
+      // Por defecto, cada vez que se abre el formulario, el modo es "Otro".
+      form.querySelectorAll(".mode-btn").forEach((b) => b.classList.toggle("on", b.dataset.mode === "other"));
+      detailWrap.dataset.mode = "other";
       updateAddState();
     }
 
     function addExercise() {
       const name = nameInput.value.trim();
       if (!name) return;
-      exercises.push({ id: uid(), name, detail: detailInput.value.trim() });
+      const mode = detailWrap.dataset.mode;
+      const newEx = { id: uid(), name, mode };
+      if (mode === "sets") {
+        newEx.series = seriesInput.value.trim();
+        newEx.reps = repsInput.value.trim();
+      } else if (mode === "crono") {
+        newEx.work = workInput.value.trim();
+        newEx.rest = restInput.value.trim();
+        newEx.rounds = roundsInput.value.trim();
+      } else {
+        newEx.detail = detailInput.value.trim();
+      }
+      exercises.push(newEx);
       persist();
       renderList();
       collapseForm();
@@ -1517,7 +1839,12 @@
 
     addBtn.addEventListener("click", addExercise);
     nameInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); detailInput.focus(); }
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const mode = detailWrap.dataset.mode;
+      if (mode === "sets") seriesInput.focus();
+      else if (mode === "crono") workInput.focus();
+      else detailInput.focus();
     });
     detailInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); addExercise(); }
