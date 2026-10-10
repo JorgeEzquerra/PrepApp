@@ -1707,7 +1707,7 @@
               pendingTap = setTimeout(() => {
                 pendingTap = null;
                 openEditMode();
-              }, 200);
+              }, 350);
             }
           });
         } else {
