@@ -254,6 +254,61 @@
     return ex.detail || "";
   }
 
+  // Nombres (sin repetir) de todos los ejercicios que existen en cualquier
+  // rutina de la app, para poder reutilizarlos al crear uno nuevo.
+  function collectAllExerciseNames() {
+    const set = new Set();
+    routines.forEach((r) => {
+      PHASES.forEach((ph) => {
+        const byDay = r.phases && r.phases[ph.key];
+        if (!byDay) return;
+        Object.keys(byDay).forEach((dayKey) => {
+          (byDay[dayKey] || []).forEach((ex) => {
+            const name = (ex.name || "").trim();
+            if (name) set.add(name);
+          });
+        });
+      });
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
+  }
+
+  // Menú (máx. 1/4 de la pantalla, con scroll si hace falta) para elegir
+  // uno de los nombres de ejercicio ya usados en cualquier parte de la app.
+  function openNamePicker(onPick) {
+    const names = collectAllExerciseNames();
+    const overlay = h(`<div class="sheet-overlay">
+      <div class="sheet name-picker-sheet">
+        <div class="sheet-title">Ejercicios usados</div>
+        ${
+          names.length
+            ? `<div class="sheet-options name-picker-options">
+                ${names.map((n) => `<button class="sheet-opt" data-name="${esc(n)}">${esc(n)}</button>`).join("")}
+              </div>`
+            : `<div class="name-picker-empty">Todavía no hay ningún ejercicio registrado.</div>`
+        }
+        <button class="sheet-cancel" data-action="cancel">Cancelar</button>
+      </div>
+    </div>`);
+
+    function close() {
+      overlay.remove();
+    }
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+    overlay.querySelectorAll("[data-name]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        onPick(btn.dataset.name);
+        close();
+      });
+    });
+    overlay.querySelector('[data-action="cancel"]').addEventListener("click", close);
+
+    document.body.appendChild(overlay);
+  }
+
   // Los tres bloques (Otro / Sets-Reps / Crono) que sustituyen al campo de
   // texto libre, según el modo elegido. Se usa tanto al crear un ejercicio
   // como al editar uno ya existente (con o sin el selector de modo).
@@ -305,24 +360,36 @@
     }
   }
 
-  // Campana sencilla generada por código (sin archivos de audio): un tono
-  // que entra y se apaga rápido, suficiente para avisar de un cambio de
-  // fase aunque no se esté mirando el móvil.
+  // Campana generada por código (sin archivos de audio): dos tonidos
+  // rápidos ("ding-ding"), cada uno con dos frecuencias superpuestas para
+  // que suene más lleno y se note más, incluso sin mirar el móvil.
+  //
+  // Importante: iOS silencia el audio de las webs (también el de esta
+  // Web Audio API) cuando el interruptor físico de silencio está
+  // activado. Esto no lo puede saltar ninguna página web — es una
+  // restricción deliberada de Apple, no algo que se pueda arreglar desde
+  // aquí — así que con el iPhone en silencio no sonará, por fuerte que
+  // se haga el sonido.
   function playBell() {
     const ctx = ensureAudioCtx();
     if (!ctx) return;
     const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, now);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.35, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 1.2);
+    [0, 0.22].forEach((offset) => {
+      const t0 = now + offset;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.9, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.9);
+      gain.connect(ctx.destination);
+      [988, 1480].forEach((freq) => {
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, t0);
+        osc.connect(gain);
+        osc.start(t0);
+        osc.stop(t0 + 0.95);
+      });
+    });
   }
 
   // Modal del cronómetro de un ejercicio en modo Crono: alterna trabajo y
@@ -410,14 +477,34 @@
       }
     }
 
-    function start() {
-      if (!hasTime) return;
-      ensureAudioCtx(); // desbloquea el audio con este gesto del usuario
+    function beginWorkout() {
       state = { phase: work > 0 ? "work" : "rest", remaining: work > 0 ? work : rest, round: 1 };
       render();
       intervalId = setInterval(tick, 1000);
+    }
+
+    function start() {
+      if (!hasTime) return;
+      ensureAudioCtx(); // desbloquea el audio con este gesto del usuario
       startBtn.classList.add("hidden");
       stopBtn.classList.remove("hidden");
+
+      // Cuenta atrás de "3, 2, 1" antes de empezar de verdad.
+      let n = 3;
+      phaseEl.textContent = "PREPARADO";
+      phaseEl.classList.remove("work", "rest");
+      countdownEl.textContent = String(n);
+      roundEl.textContent = `Ronda 1 de ${rounds}`;
+      intervalId = setInterval(() => {
+        n -= 1;
+        if (n <= 0) {
+          clearInterval(intervalId);
+          intervalId = null;
+          beginWorkout();
+        } else {
+          countdownEl.textContent = String(n);
+        }
+      }, 1000);
     }
 
     function stop() {
@@ -464,6 +551,7 @@
     folder: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>`,
     copy: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`,
     timer: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M10 2h4"/></svg>`,
+    list: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10M7 12h10M7 16h7"/></svg>`,
   };
 
   function icon(name) {
@@ -1765,7 +1853,10 @@
 
     const form = h(`<div class="add-exercise-form hidden">
       <div class="inputs">
-        <input type="text" id="ex-name" placeholder="Ejercicio (ej. Sentadillas)" maxlength="60" autocomplete="off" />
+        <div class="name-row">
+          <input type="text" id="ex-name" placeholder="Ejercicio (ej. Sentadillas)" maxlength="60" autocomplete="off" />
+          <button type="button" class="icon-btn" id="ex-name-picker" aria-label="Elegir un ejercicio ya usado">${icon("list")}</button>
+        </div>
         ${detailModesHtml()}
         <div class="mode-picker">
           <button type="button" class="mode-btn" data-mode="sets">Sets/Reps</button>
@@ -1786,6 +1877,13 @@
     const roundsInput = detailWrap.querySelector(".field-rounds");
     [seriesInput, repsInput, workInput, restInput, roundsInput].forEach(restrictToDigits);
     const addBtn = form.querySelector("#ex-add");
+
+    form.querySelector("#ex-name-picker").addEventListener("click", () => {
+      openNamePicker((name) => {
+        nameInput.value = name;
+        updateAddState();
+      });
+    });
 
     form.querySelectorAll(".mode-btn").forEach((btn) => {
       btn.addEventListener("click", () => {

@@ -847,6 +847,14 @@ svg { display: block; flex-shrink: 0; }
   gap: 6px;
 }
 
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.name-row input[type="text"] { flex: 1; min-width: 0; }
+.name-row .icon-btn svg { width: 18px; height: 18px; stroke: var(--text-dim); }
+
 .add-exercise-form input[type="text"] {
   padding: 12px 14px;
   border-radius: 12px;
@@ -1127,6 +1135,30 @@ svg { display: block; flex-shrink: 0; }
 }
 .sheet-opt:last-child { border-bottom: none; }
 .sheet-opt.danger { color: var(--danger); font-weight: 700; }
+
+/* Selector de nombres de ejercicios ya usados: como mucho 1/4 de la
+   pantalla, con scroll dentro de la lista si no caben todos. */
+.name-picker-sheet {
+  max-height: 25vh;
+  display: flex;
+  flex-direction: column;
+}
+.name-picker-options {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+.name-picker-empty {
+  padding: 20px 16px;
+  border-radius: var(--radius-md);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-dim);
+}
 
 .sheet-cancel {
   padding: 16px;

@@ -68,10 +68,18 @@ icons/                   iconos de la app (192, 512, maskable, apple-touch-icon)
    - **Crono** — tiempo de trabajo y de descanso (en segundos) y
      número de rondas. Un ejercicio así creado abre un temporizador
      con una doble pulsación sobre él (una sola pulsación lo sigue
-     editando, como cualquier otro): cuenta atrás con la fase actual
-     (TRABAJO/DESCANSO) y la ronda, campana al cambiar de fase y al
-     terminar, y botón para detenerlo.
+     editando, como cualquier otro): al pulsar Iniciar hay una cuenta
+     atrás de 3 antes de empezar, luego cuenta atrás con la fase
+     actual (TRABAJO/DESCANSO) y la ronda, campana al cambiar de fase
+     y al terminar, y botón para detenerlo. *Nota: con el iPhone en
+     modo silencio, iOS no deja sonar nada a ninguna web — es una
+     restricción del propio sistema, no algo que dependa de la app.*
    - **Otro** — el campo de texto libre de siempre.
+
+   Junto al nombre del ejercicio hay un botón (⊞) que abre un listado
+   —sin repetidos, con barra de scroll si hace falta, máximo 1/4 de la
+   pantalla— de todos los nombres de ejercicio ya usados en cualquier
+   rutina de la app; tocar uno rellena el nombre automáticamente.
 
 Además, manteniendo pulsado 1,5 s uno de los tres botones de fase en
 el detalle de la rutina se abre un menú para copiar ese calentamiento
